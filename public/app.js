@@ -22,6 +22,29 @@
 
     // --- Init ---
     function init() {
+        // Auth gate — redirect if not logged in
+        const token = localStorage.getItem('caltrc_token');
+        if (!token) {
+            window.location.href = '/auth.html';
+            return;
+        }
+
+        // Personalized greeting
+        const greeting = document.getElementById('user-greeting');
+        try {
+            const user = JSON.parse(localStorage.getItem('caltrc_user'));
+            if (user && user.name) {
+                greeting.textContent = `Welcome back, ${user.name}`;
+            }
+        } catch { /* ignore */ }
+
+        // Logout
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            localStorage.removeItem('caltrc_token');
+            localStorage.removeItem('caltrc_user');
+            window.location.href = '/auth.html';
+        });
+
         const today = new Date().toISOString().split('T')[0];
         logDate.value = today;
 

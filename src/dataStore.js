@@ -60,6 +60,14 @@ class DataStore {
         return this.goals.get(key) || null;
     }
 
+    // --- User lookup ---
+    findUserByEmail(email) {
+        for (const user of this.users.values()) {
+            if (user.email === email) return user;
+        }
+        return null;
+    }
+
     // --- Reset (for testing) ---
     clear() {
         this.users.clear();

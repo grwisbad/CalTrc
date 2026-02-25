@@ -6,15 +6,88 @@
 
 const express = require('express');
 const path = require('path');
+const crypto = require('crypto');
 const { searchFood, generateId } = require('./foodLogger');
 const { loadEntries, appendEntry, computeTotals } = require('./csvStore');
+const DataStore = require('./dataStore');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Shared auth state
+const store = new DataStore();
+const tokens = new Map(); // token → userId
+
 // Middleware
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// --- Auth Routes ---
+
+/**
+ * POST /api/auth/signup
+ * Body: { name, email, password }
+ */
+app.post('/api/auth/signup', (req, res) => {
+    const { name, email, password } = req.body;
+
+    if (!name || !email || !password) {
+        return res.status(400).json({ error: 'Name, email, and password are required' });
+    }
+
+    if (password.length < 6) {
+        return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    // Check duplicate email
+    if (store.findUserByEmail(email)) {
+        return res.status(409).json({ error: 'An account with this email already exists' });
+    }
+
+    const user = {
+        id: generateId(),
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        password, // MVP: plain text in-memory
+        createdAt: new Date().toISOString(),
+    };
+
+    store.saveUser(user);
+
+    const token = crypto.randomBytes(24).toString('hex');
+    tokens.set(token, user.id);
+
+    res.status(201).json({
+        token,
+        user: { id: user.id, name: user.name, email: user.email },
+    });
+});
+
+/**
+ * POST /api/auth/login
+ * Body: { email, password }
+ */
+app.post('/api/auth/login', (req, res) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    const user = store.findUserByEmail(email.trim().toLowerCase());
+
+    if (!user || user.password !== password) {
+        return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    const token = crypto.randomBytes(24).toString('hex');
+    tokens.set(token, user.id);
+
+    res.status(200).json({
+        token,
+        user: { id: user.id, name: user.name, email: user.email },
+    });
+});
 
 /**
  * GET /api/food/search?q=...

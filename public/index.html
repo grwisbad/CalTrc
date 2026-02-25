@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,11 +11,15 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
   <div class="app">
     <header class="app-header">
-      <h1 class="app-title">CALTRC</h1>
-      <p class="app-subtitle">Daily food log</p>
+      <div class="header-row">
+        <h1 class="app-title">CALTRC</h1>
+        <button class="btn-logout" id="logout-btn">Log out</button>
+      </div>
+      <p class="user-greeting" id="user-greeting">Daily food log</p>
     </header>
 
     <!-- Add Food Section -->
@@ -22,7 +27,8 @@
       <h2 class="section-title">Add food</h2>
       <div class="card">
         <div class="tabs" role="tablist">
-          <button class="tab active" role="tab" data-tab="search" id="tab-search" aria-selected="true">Search USDA</button>
+          <button class="tab active" role="tab" data-tab="search" id="tab-search" aria-selected="true">Search
+            USDA</button>
           <button class="tab" role="tab" data-tab="manual" id="tab-manual" aria-selected="false">Manual entry</button>
         </div>
 
@@ -31,7 +37,8 @@
           <div class="form-group">
             <label for="food-search">Food name</label>
             <div class="search-wrapper">
-              <input type="text" id="food-search" class="search-input" placeholder="e.g. chicken breast" autocomplete="off">
+              <input type="text" id="food-search" class="search-input" placeholder="e.g. chicken breast"
+                autocomplete="off">
               <span class="search-status" id="search-status"></span>
             </div>
           </div>
@@ -91,4 +98,5 @@
 
   <script src="app.js"></script>
 </body>
+
 </html>

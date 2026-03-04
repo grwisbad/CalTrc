@@ -10,59 +10,67 @@ CALTRC is a calorie-tracking application designed for people who want to improve
 
 ```mermaid
 graph TD
-    A[Frontend / CLI] -->|HTTP| B[API Layer — Express.js]
-    B --> C[Survey Module]
-    B --> D[Food Logger]
-    B --> E[Goal Engine]
-    C --> F[(Data Store)]
-    D --> F
-    D -->|barcode lookup| G[OpenFoodFacts API]
-    E --> F
+    A1[auth.html — Sign Up / Login] -->|POST /api/auth/*| B[Express Server — server.js]
+    A2[index.html — Dashboard] -->|GET/POST /api/*| B
+    B -->|search| D[Food Logger — foodLogger.js]
+    B -->|log/read| H[CSV Store — csvStore.js]
+    B -->|auth| I[DataStore — dataStore.js]
+    D -->|USDA FoodData Central API| G[(USDA API — external)]
+    H -->|read/write| J[(data/food_log.csv)]
+    I -->|in-memory| K[(Users, Surveys, Goals)]
+    C[Survey Module — surveyModule.js] --> I
+    E[Goal Engine — goalEngine.js] --> I
 ```
 
-**Data flow:**
-1. The **Frontend** sends HTTP requests to the **API Layer**.
-2. The **API Layer** routes requests to the appropriate module.
-3. Modules read/write through the **Data Store** abstraction.
-4. The **Food Logger** optionally queries the external **OpenFoodFacts API** for barcode lookups.
+**Data flow (current M3 walking skeleton):**
+1. The **Frontend** (`auth.html`, `index.html`) sends HTTP requests to the **Express Server**.
+2. **Auth routes** validate credentials against the in-memory **DataStore**.
+3. **Food search** queries the **USDA FoodData Central API** and returns parsed results.
+4. **Food logging** writes entries to `data/food_log.csv` via the **CSV Store**.
+5. **Survey Module** and **Goal Engine** are implemented and tested but not yet wired into the UI.
 
 ---
 
 ## Top Components / Modules
 
-| Module | Responsibility |
-|--------|---------------|
-| **Survey Module** | Presents health questions, validates responses, stores survey data |
-| **Food Logger** | Accepts barcode or manual food input, fetches macros, creates food entries |
-| **Goal Engine** | Computes daily calorie/macro targets from survey responses |
-| **Data Store** | Abstracts persistence — in-memory/JSON for MVP, migratable to SQLite/Firebase |
-| **API Layer** | Express.js REST endpoints connecting clients to backend modules |
+| Module | File | Responsibility | M3 Status |
+|--------|------|---------------|:---------:|
+| **Express Server** | `server.js` | REST endpoints, static file serving, auth routes | ✅ Live |
+| **Food Logger** | `foodLogger.js` | USDA API search, food entry creation, daily log retrieval | ✅ Live |
+| **CSV Store** | `csvStore.js` | Read/write food entries to `data/food_log.csv` | ✅ Live |
+| **DataStore** | `dataStore.js` | In-memory persistence for users, surveys, goals | ✅ Live (auth) |
+| **Survey Module** | `surveyModule.js` | Health survey validation and storage | ✅ Tested, not in UI |
+| **Goal Engine** | `goalEngine.js` | Computes daily calorie/macro targets from survey data | ✅ Tested, not in UI |
+| **Frontend** | `public/` | Auth pages, dashboard, food search & log UI | ✅ Live |
 
 ---
 
 ## Key Interfaces (API Endpoints)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/survey` | Submit survey answers; returns computed goals |
-| `GET` | `/api/survey/:userId` | Retrieve a user's survey responses |
-| `GET` | `/api/food/:barcode` | Look up food macros by barcode (OpenFoodFacts) |
-| `POST` | `/api/log` | Log a food entry (barcode or manual) |
-| `GET` | `/api/log/:userId/today` | Get today's food log for a user |
-| `GET` | `/api/goals/:userId` | Get the user's current daily goal and progress |
+| Method | Endpoint | Description | M3 Status |
+|--------|----------|-------------|:---------:|
+| `POST` | `/api/auth/signup` | Create account (name, email, password) → token | ✅ |
+| `POST` | `/api/auth/login` | Login with email/password → token | ✅ |
+| `GET` | `/api/food/search?q=...` | Search USDA FoodData Central for foods | ✅ |
+| `POST` | `/api/log` | Log a food entry (name, calories, protein, carbs, fat) | ✅ |
+| `GET` | `/api/log?date=YYYY-MM-DD` | Get food entries and macro totals for a date | ✅ |
 
 ### Internal Function Boundaries
 
 ```
-surveyModule.submitSurvey(userId, answers[])  → SurveyResponse
-surveyModule.getSurvey(userId)                → SurveyResponse | null
+surveyModule.submitSurvey(userId, answers[], store)  → { success, data | errors }
+surveyModule.getSurvey(userId, store)                → SurveyResponse | null
 
-foodLogger.logFood(userId, foodData)          → FoodEntry
-foodLogger.lookupBarcode(barcode)             → FoodInfo | null
-foodLogger.getTodayLog(userId)                → FoodEntry[]
+foodLogger.searchFood(query, fetchFn?)               → FoodResult[]
+foodLogger.logFood(userId, foodData, store)           → FoodEntry
+foodLogger.getTodayLog(userId, store)                 → FoodEntry[]
 
-goalEngine.computeGoals(surveyResponse)       → DailyGoal
-goalEngine.getProgress(userId)                → { goal: DailyGoal, consumed: MacroTotals }
+goalEngine.computeGoals(surveyData)                   → DailyGoal
+goalEngine.getProgress(userId, store)                 → { goal, consumed }
+
+csvStore.appendEntry(entry)                           → void
+csvStore.loadEntries(date)                            → FoodEntry[]
+csvStore.computeTotals(entries)                       → MacroTotals
 ```
 
 ---
@@ -109,12 +117,13 @@ DailyGoal {
 
 ### Storage Strategy
 
-| Phase | Storage | Rationale |
-|-------|---------|-----------|
-| MVP | In-memory + JSON files | Fast to implement, no setup required |
-| Post-MVP | SQLite or Firebase | Concurrency, persistence, scalability |
+| Phase | Storage | Used For | Rationale |
+|-------|---------|----------|----------|
+| M3 (current) | In-memory (`DataStore`) | Users, surveys, goals | Fast, no setup, resets on restart |
+| M3 (current) | CSV (`csvStore`) | Food log entries | Simple persistence, human-readable |
+| Post-MVP | SQLite or Firebase | All data | Concurrency, persistence, scalability |
 
-All data access goes through the `DataStore` interface so the backing store can be swapped without changing module logic.
+Auth data resets on server restart (in-memory). Food log entries persist across restarts (CSV).
 
 ---
 
@@ -126,11 +135,11 @@ All data access goes through the `DataStore` interface so the backing store can 
 - **Rationale:** Zero setup cost, easy to inspect data, sufficient for single-user local development.
 - **Trade-off:** No concurrency support, no query optimization. Acceptable for MVP scope.
 
-### ADR-2: External Barcode API (OpenFoodFacts) vs. Local Food Database
+### ADR-2: USDA FoodData Central API vs. Local Food Database
 
-- **Decision:** Use the [OpenFoodFacts API](https://world.openfoodfacts.org/) for barcode lookups.
-- **Rationale:** Massive food database (3M+ products) without needing to maintain our own.
-- **Trade-off:** Depends on network availability and API rate limits. Mitigated by supporting manual entry as a fallback.
+- **Decision:** Use the [USDA FoodData Central API](https://fdc.nal.usda.gov/) for food search.
+- **Rationale:** Authoritative, free, comprehensive nutritional data with no API key required for basic search.
+- **Trade-off:** Depends on network availability. Mitigated by supporting manual entry as a fallback.
 
 ### ADR-3: Monolith vs. Microservices
 

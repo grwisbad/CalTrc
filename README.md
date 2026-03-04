@@ -36,7 +36,7 @@
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-org/BigBackScanner.git
+   git clone https://github.com/grwisbad/BigBackScanner.git
    cd BigBackScanner
    ```
 
@@ -55,6 +55,53 @@
    npm test
    ```
 
+5. Open in your browser:
+   ```
+   http://localhost:3000
+   ```
+
+---
+
+## M3 Demo Path (Walking Skeleton)
+
+This section describes the single end-to-end workflow demonstrated for M3.
+
+### Workflow: Search Food → Log Entry → View Daily Totals
+
+1. **Start the server:**
+   ```bash
+   npm start
+   ```
+   You should see: `CALTRC running at http://localhost:3000`
+
+2. **Open the app** at `http://localhost:3000`.
+
+3. **Sign up** with a name, email, and password (minimum 6 characters).
+
+4. **Search for a food** — type a food name (e.g., "chicken") in the search bar. The app queries the USDA FoodData Central API and returns real nutritional data.
+
+5. **Log the food** — click a search result to add it to your daily log. The entry is saved to `data/food_log.csv`.
+
+6. **View daily totals** — the dashboard shows your logged entries and macro totals (calories, protein, carbs, fat) for the current day.
+
+### Expected Successful Output
+
+- The search returns real food items with calorie and macro info from the USDA database.
+- After logging, the entry appears in the daily log table.
+- The totals bar updates to reflect the sum of all logged entries for today.
+- Running `npm test` shows all 42 tests passing across 6 test suites.
+
+### What Is Real vs. Stubbed
+
+| Component | Status | Detail |
+|-----------|--------|--------|
+| USDA FoodData Central API | **Real** | Live HTTP calls to the USDA API for food search |
+| Food logging & CSV storage | **Real** | Entries are persisted to `data/food_log.csv` |
+| Express server & API routes | **Real** | Fully functional REST API |
+| Frontend (HTML/CSS/JS) | **Real** | Served by Express from `public/` |
+| User authentication | **Stubbed** | In-memory only; no database, passwords stored in plain text |
+| Health survey & goal engine | **Real logic** | Modules are implemented and tested, but not yet wired into the UI |
+
 ---
 
 ## M2 Documents
@@ -67,24 +114,36 @@
 ## Project Structure
 
 ```
-/docs               # Design documents and strategy docs
+/docs                    # Design documents and strategy docs
   design-architecture.md
   test-strategy.md
-/src                # Application source code
-  index.js          # Entry point
-  dataStore.js      # Data persistence abstraction
-  surveyModule.js   # Health survey logic
-  foodLogger.js     # Food entry & barcode lookup
-  goalEngine.js     # Calorie/macro goal computation
-/tests              # Test files
-  fixtures/         # Test data (JSON fixtures)
-  surveyModule.test.js
-  foodLogger.test.js
-  goalEngine.test.js
-  index.test.js     # Integration tests
-README.md           # Project documentation
-TEAM.md             # Team norms and roles
-.gitignore          # Git ignore rules
+/src                     # Application source code
+  server.js              # Express server & API routes
+  index.js               # Legacy entry point
+  dataStore.js           # In-memory data persistence
+  csvStore.js            # CSV-based food log persistence
+  surveyModule.js        # Health survey logic
+  foodLogger.js          # Food entry & USDA API lookup
+  goalEngine.js          # Calorie/macro goal computation
+/public                  # Frontend assets (served by Express)
+  index.html             # Main app page
+  auth.html              # Login / sign-up page
+  app.js                 # Frontend application logic
+  auth.js                # Frontend auth logic
+  styles.css             # Stylesheet
+/data                    # Persistent data files
+  food_log.csv           # Logged food entries
+/tests                   # Test files
+  fixtures/              # Test data (JSON fixtures)
+  surveyModule.test.js   # Survey module unit tests
+  foodLogger.test.js     # Food logger unit tests
+  goalEngine.test.js     # Goal engine unit tests
+  csvStore.test.js       # CSV store unit tests
+  auth.test.js           # Auth API unit tests
+  index.test.js          # Integration tests
+README.md                # Project documentation
+TEAM.md                  # Team norms and roles
+.gitignore               # Git ignore rules
 ```
 
 ---

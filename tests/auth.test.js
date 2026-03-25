@@ -3,6 +3,41 @@
  */
 
 const http = require('http');
+
+// Fake DB state
+const dbState = {
+    users: [],
+    sessions: []
+};
+
+// Mock PostgreSQL pool
+jest.mock('../src/db', () => ({
+    pool: {
+        query: jest.fn(async (text, params) => {
+            if (text.includes('SELECT id FROM users')) {
+                const user = dbState.users.find(u => u.email === params[0]);
+                return { rows: user ? [{ id: user.id }] : [] };
+            }
+            if (text.includes('INSERT INTO users')) {
+                dbState.users.push({
+                    id: params[0], name: params[1], email: params[2], password: params[3]
+                });
+                return {};
+            }
+            if (text.includes('INSERT INTO sessions')) {
+                dbState.sessions.push({ token: params[0], user_id: params[1] });
+                return {};
+            }
+            if (text.includes('SELECT id, name, email, password FROM users')) {
+                const user = dbState.users.find(u => u.email === params[0]);
+                return { rows: user ? [user] : [] };
+            }
+            return { rows: [] };
+        })
+    },
+    initSchema: jest.fn().mockResolvedValue()
+}));
+
 const app = require('../src/server');
 
 let server;

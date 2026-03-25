@@ -4,21 +4,21 @@
 
 /* --- Tokens --- */
 :root {
-  /* Colors — neutral, functional palette */
-  --color-bg: #f7f7f8;
+  /* Colors — Nano Banana Aesthetic */
+  --color-bg: #fffdf5; /* subtle warm yellow tint */
   --color-surface: #ffffff;
-  --color-surface-hover: #f0f0f2;
-  --color-border: #e2e2e6;
-  --color-border-focus: #4a7c6f;
-  --color-text: #1a1a1e;
-  --color-text-secondary: #6b6b76;
-  --color-text-muted: #9b9ba6;
-  --color-accent: #4a7c6f;
-  --color-accent-hover: #3d6a5e;
-  --color-accent-text: #ffffff;
-  --color-danger: #c4453c;
-  --color-danger-hover: #a83830;
-  --color-success: #3a8a5c;
+  --color-surface-hover: #feebd9;
+  --color-border: #f0e6d2;
+  --color-border-focus: #ffcc00; /* Nano Banana bright » Primary accent */
+  --color-text: #1f1f22; /* Dark slate */
+  --color-text-secondary: #5e5d66;
+  --color-text-muted: #9e9ba6;
+  --color-accent: #ffcc00; /* vibrant nano banana */
+  --color-accent-hover: #ffbb00;
+  --color-accent-text: #1a1a1a; /* Dark text on yellow */
+  --color-danger: #e63946;
+  --color-danger-hover: #cc333d;
+  --color-success: #2a9d8f;
 
   /* Type scale */
   --text-xs: 0.75rem;
@@ -43,12 +43,13 @@
   --sp-10: 40px;
   --sp-12: 48px;
 
-  /* Radii — only two */
-  --radius-sm: 4px;
-  --radius-md: 8px;
+  /* Radii — playful & soft */
+  --radius-sm: 8px;
+  --radius-md: 16px;
 
-  /* Shadow — one level */
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  /* Shadow — soft glowing depth */
+  --shadow-sm: 0 2px 8px rgba(255, 204, 0, 0.1);
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.05), 0 2px 8px rgba(255, 204, 0, 0.15);
 
   /* Transitions */
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
@@ -94,10 +95,10 @@ body {
 }
 
 .app-title {
-  font-size: var(--text-xl);
-  font-weight: var(--font-weight-semibold);
+  font-size: var(--text-2xl);
+  font-weight: 800;
   color: var(--color-text);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 .app-subtitle {
@@ -123,7 +124,12 @@ body {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow);
-  padding: var(--sp-5);
+  padding: var(--sp-6);
+  transition: transform var(--duration-normal) var(--ease), box-shadow var(--duration-normal) var(--ease);
+}
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(255, 204, 0, 0.2);
 }
 
 /* --- Inputs --- */
@@ -168,6 +174,7 @@ input[type="date"] {
 
 input:focus {
   border-color: var(--color-border-focus);
+  box-shadow: 0 0 0 3px rgba(255, 204, 0, 0.3);
 }
 
 input::placeholder {
@@ -193,13 +200,12 @@ input::placeholder {
   padding: var(--sp-2) var(--sp-4);
   font-family: inherit;
   font-size: var(--text-sm);
-  font-weight: var(--font-weight-medium);
+  font-weight: var(--font-weight-semibold);
   line-height: var(--line-height);
   border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  border-radius: 999px; /* Pill shape for Nano Banana style */
   cursor: pointer;
-  transition: background-color var(--duration-fast) var(--ease),
-    transform var(--duration-fast) var(--ease);
+  transition: all var(--duration-fast) var(--ease);
   user-select: none;
 }
 
@@ -220,6 +226,8 @@ input::placeholder {
 
 .btn-primary:hover:not(:disabled) {
   background-color: var(--color-accent-hover);
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(255, 204, 0, 0.4);
 }
 
 .btn-ghost {
@@ -519,7 +527,7 @@ input::placeholder {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #f0f4f3 0%, #e8ebe9 50%, #f7f7f8 100%);
+  background: radial-gradient(circle at 50% 0%, #fffdf5 0%, #fffdf5 40%, #ffcc0022 100%);
 }
 
 .auth-container {

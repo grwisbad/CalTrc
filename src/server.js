@@ -9,18 +9,36 @@ const path = require('path');
 const crypto = require('crypto');
 const { searchFood, generateId } = require('./foodLogger');
 const { pool, initSchema } = require('./db');
-const DataStore = require('./dataStore');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Shared auth state
-const store = new DataStore();
-const tokens = new Map(); // token → userId
-
 // Middleware
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// --- Auth Middleware ---
+async function requireAuth(req, res, next) {
+    if (!pool) return res.status(500).json({ error: 'Database unconfigured' });
+    
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    const token = authHeader.split(' ')[1];
+    try {
+        const result = await pool.query('SELECT user_id FROM sessions WHERE token = $1', [token]);
+        if (result.rows.length === 0) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+        req.user = { id: result.rows[0].user_id };
+        next();
+    } catch (err) {
+        console.error('Auth error:', err);
+        res.status(500).json({ error: 'Authentication failed' });
+    }
+}
 
 // --- Auth Routes ---
 
@@ -43,31 +61,7 @@ app.post('/api/auth/signup', (req, res) => {
 
     // Check duplicate email
     if (!pool) {
-        // Fallback to in-memory store
-        const existingUser = store.findUserByEmail(trimmedEmail);
-        if (existingUser) {
-            return res.status(409).json({ error: 'An account with this email already exists' });
-        }
-        
-        const salt = crypto.randomBytes(16).toString('hex');
-        const hashedPassword = crypto.scryptSync(password, salt, 64).toString('hex');
-        
-        const user = {
-            id: generateId(),
-            name: name.trim(),
-            email: trimmedEmail,
-            password: `${salt}:${hashedPassword}`
-        };
-        
-        store.saveUser(user);
-        
-        const token = crypto.randomBytes(24).toString('hex');
-        tokens.set(token, user.id);
-        
-        return res.status(201).json({
-            token,
-            user: { id: user.id, name: user.name, email: user.email },
-        });
+        return res.status(500).json({ error: 'Database is not configured. Set DATABASE_URL on Vercel.' });
     }
 
     pool.query('SELECT id FROM users WHERE email = $1', [trimmedEmail])
@@ -95,12 +89,13 @@ app.post('/api/auth/signup', (req, res) => {
                 )
                 .then(() => {
                     const token = crypto.randomBytes(24).toString('hex');
-                    tokens.set(token, user.id);
-
-                    res.status(201).json({
-                        token,
-                        user: { id: user.id, name: user.name, email: user.email },
-                    });
+                    return pool.query('INSERT INTO sessions (token, user_id) VALUES ($1, $2)', [token, user.id])
+                        .then(() => {
+                            res.status(201).json({
+                                token,
+                                user: { id: user.id, name: user.name, email: user.email },
+                            });
+                        });
                 });
         })
         .catch((err) => {
@@ -123,34 +118,7 @@ app.post('/api/auth/login', (req, res) => {
     const trimmedEmail = email.trim().toLowerCase();
 
     if (!pool) {
-        // Fallback to in-memory store
-        const user = store.findUserByEmail(trimmedEmail);
-        
-        if (!user) {
-            return res.status(401).json({ error: 'Invalid email or password' });
-        }
-        
-        const [salt, key] = user.password.split(':');
-        // Handle legacy plaintext passwords from tests gracefully
-        if (!key) {
-            if (user.password !== password) {
-                return res.status(401).json({ error: 'Invalid email or password' });
-            }
-        } else {
-            const hashedBuffer = crypto.scryptSync(password, salt, 64);
-            const keyBuffer = Buffer.from(key, 'hex');
-            if (!crypto.timingSafeEqual(hashedBuffer, keyBuffer)) {
-                return res.status(401).json({ error: 'Invalid email or password' });
-            }
-        }
-        
-        const token = crypto.randomBytes(24).toString('hex');
-        tokens.set(token, user.id);
-        
-        return res.status(200).json({
-            token,
-            user: { id: user.id, name: user.name, email: user.email },
-        });
+        return res.status(500).json({ error: 'Database is not configured. Set DATABASE_URL on Vercel.' });
     }
 
     pool.query('SELECT id, name, email, password FROM users WHERE email = $1', [trimmedEmail])
@@ -176,12 +144,13 @@ app.post('/api/auth/login', (req, res) => {
             }
 
             const token = crypto.randomBytes(24).toString('hex');
-            tokens.set(token, user.id);
-
-            res.status(200).json({
-                token,
-                user: { id: user.id, name: user.name, email: user.email },
-            });
+            return pool.query('INSERT INTO sessions (token, user_id) VALUES ($1, $2)', [token, user.id])
+                .then(() => {
+                    res.status(200).json({
+                        token,
+                        user: { id: user.id, name: user.name, email: user.email },
+                    });
+                });
         })
         .catch((err) => {
             console.error('Login error:', err);
@@ -213,17 +182,11 @@ app.get('/api/food/search', async (req, res) => {
  * Add a food entry to the CSV.
  * Body: { name, calories, protein, carbs, fat }
  */
-app.post('/api/log', (req, res) => {
+app.post('/api/log', requireAuth, (req, res) => {
     const { name, calories, protein, carbs, fat } = req.body;
 
     if (!name || name.trim().length === 0) {
         return res.status(400).json({ error: 'Food name is required' });
-    }
-
-    if (!pool) {
-        return res
-            .status(500)
-            .json({ error: 'Database is not configured. Set DATABASE_URL on Vercel.' });
     }
 
     const today = new Date().toISOString().split('T')[0];
@@ -239,12 +202,13 @@ app.post('/api/log', (req, res) => {
 
     pool.query(
         `
-        INSERT INTO food_entries (id, date, name, calories, protein, carbs, fat, logged_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+        INSERT INTO food_entries (id, user_id, date, name, calories, protein, carbs, fat, logged_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
         RETURNING id, date, name, calories, protein, carbs, fat, logged_at
     `,
         [
             entry.id,
+            req.user.id,
             entry.date,
             entry.name,
             entry.calories,
@@ -266,23 +230,17 @@ app.post('/api/log', (req, res) => {
  * GET /api/log?date=YYYY-MM-DD
  * Get food entries and totals for a date.
  */
-app.get('/api/log', (req, res) => {
+app.get('/api/log', requireAuth, (req, res) => {
     const date = req.query.date || new Date().toISOString().split('T')[0];
-
-    if (!pool) {
-        return res
-            .status(500)
-            .json({ error: 'Database is not configured. Set DATABASE_URL on Vercel.' });
-    }
 
     pool.query(
         `
         SELECT id, date, name, calories, protein, carbs, fat, logged_at
         FROM food_entries
-        WHERE date = $1
+        WHERE date = $1 AND user_id = $2
         ORDER BY logged_at ASC
     `,
-        [date]
+        [date, req.user.id]
     )
         .then((result) => {
             const entries = result.rows;

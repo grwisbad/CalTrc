@@ -104,7 +104,10 @@
     `;
 
         try {
-            const res = await fetch(`/api/food/search?q=${encodeURIComponent(query)}`);
+            const token = localStorage.getItem('caltrc_token');
+            const res = await fetch(`/api/food/search?q=${encodeURIComponent(query)}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             const data = await res.json();
 
             if (!data.results || data.results.length === 0) {
@@ -191,9 +194,13 @@
         manualSubmit.disabled = true;
 
         try {
+            const token = localStorage.getItem('caltrc_token');
             const res = await fetch('/api/log', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify(food),
             });
 
@@ -237,7 +244,10 @@
     `;
 
         try {
-            const res = await fetch(`/api/log?date=${date}`);
+            const token = localStorage.getItem('caltrc_token');
+            const res = await fetch(`/api/log?date=${date}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             const data = await res.json();
             renderLog(data.entries, data.totals);
         } catch {

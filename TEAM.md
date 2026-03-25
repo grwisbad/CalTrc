@@ -15,5 +15,3 @@ Roles (can rotate weekly):
 - **Task ownership:** Every GitHub issue must have one assigned owner.
 - **Definition of done:** Feature runs locally, meets acceptance criteria, and README updated if needed.
 - **Conflict/blockers:** If blocked for more than 24 hours, notify the Backlog Lead.
-
-Jaron does a really good job of doing nothing.

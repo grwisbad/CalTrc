@@ -26,6 +26,23 @@
 
 ---
 
+## Architecture Diagram
+```mermaid
+graph TD;
+    Client[Browser Frontend HTML/CSS/JS] -->|REST API| Express[Express.js Server]
+    Express -->|External HTTP| USDA[USDA FoodData Central API]
+    Express -->|SQL Queries| DB[(PostgreSQL Database)]
+    Express -->|Fallback| InMemory[In-Memory DataStore]
+    Express -->|Disk I/O| CSV[Local CSV File]
+```
+
+## Roadmap (Next 6 Months)
+- **Q3 2026**: Wire up the completed Health Survey module into the user onboarding UI to provide personalized calorie goals dynamically.
+- **Q4 2026**: Fully migrate all in-memory persistence to PostgreSQL for users, food logs, and surveys.
+- **Q1 2027**: Multi-day reporting and user progression trends.
+
+---
+
 ## Getting Started
 
 ### Prerequisites

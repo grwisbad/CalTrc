@@ -49,20 +49,26 @@ function computeGoals(surveyResponse) {
 /**
  * Get progress for a user today.
  * @param {string} userId
- * @param {import('./dataStore')} dataStore
- * @returns {{ goal: Object|null, consumed: Object }}
+ * @param {import('pg').Pool} pool
+ * @returns {Promise<{ goal: Object|null, consumed: Object }>}
  */
-function getProgress(userId, dataStore) {
+async function getProgress(userId, pool) {
     const today = new Date().toISOString().split('T')[0];
-    const goal = dataStore.getGoal(userId, today);
-    const entries = dataStore.getFoodEntriesByUser(userId, today);
+    
+    // Fetch Goal
+    const goalRes = await pool.query('SELECT target_calories as "calorieTarget", target_protein as "proteinTarget", target_carbs as "carbTarget", target_fat as "fatTarget" FROM goals WHERE user_id = $1 AND date = $2', [userId, today]);
+    const goal = goalRes.rows.length > 0 ? goalRes.rows[0] : null;
+    
+    // Fetch consumed entries
+    const entriesRes = await pool.query('SELECT calories, protein, carbs, fat FROM food_entries WHERE user_id = $1 AND date = $2', [userId, today]);
+    const entries = entriesRes.rows;
 
     const consumed = entries.reduce(
         (totals, e) => ({
-            calories: totals.calories + e.calories,
-            protein: totals.protein + e.protein,
-            carbs: totals.carbs + e.carbs,
-            fat: totals.fat + e.fat,
+            calories: totals.calories + (Number(e.calories) || 0),
+            protein: totals.protein + (Number(e.protein) || 0),
+            carbs: totals.carbs + (Number(e.carbs) || 0),
+            fat: totals.fat + (Number(e.fat) || 0),
         }),
         { calories: 0, protein: 0, carbs: 0, fat: 0 }
     );

@@ -39,10 +39,10 @@ function validateSurvey(answers) {
  * Submit a survey.
  * @param {string} userId
  * @param {Object[]} answers
- * @param {import('./dataStore')} dataStore
- * @returns {{ success: boolean, data?: Object, errors?: string[] }}
+ * @param {import('pg').Pool} pool
+ * @returns {Promise<{ success: boolean, data?: Object, errors?: string[] }>}
  */
-function submitSurvey(userId, answers, dataStore) {
+async function submitSurvey(userId, answers, pool) {
     const validation = validateSurvey(answers);
     if (!validation.valid) {
         return { success: false, errors: validation.errors };
@@ -54,18 +54,28 @@ function submitSurvey(userId, answers, dataStore) {
         completedAt: new Date().toISOString(),
     };
 
-    dataStore.saveSurvey(surveyResponse);
+    await pool.query(
+        'INSERT INTO surveys (id, user_id, answers, completed_at) VALUES ($1, $2, $3, $4) ON CONFLICT (user_id) DO UPDATE SET answers = EXCLUDED.answers, completed_at = EXCLUDED.completed_at',
+        [`survey_${userId}`, userId, JSON.stringify(answers), surveyResponse.completedAt]
+    );
+
     return { success: true, data: surveyResponse };
 }
 
 /**
  * Get a user's survey.
  * @param {string} userId
- * @param {import('./dataStore')} dataStore
- * @returns {Object|null}
+ * @param {import('pg').Pool} pool
+ * @returns {Promise<Object|null>}
  */
-function getSurvey(userId, dataStore) {
-    return dataStore.getSurvey(userId);
+async function getSurvey(userId, pool) {
+    const result = await pool.query('SELECT answers, completed_at FROM surveys WHERE user_id = $1', [userId]);
+    if (result.rows.length === 0) return null;
+    return {
+        userId,
+        answers: result.rows[0].answers,
+        completedAt: result.rows[0].completed_at
+    };
 }
 
 module.exports = {

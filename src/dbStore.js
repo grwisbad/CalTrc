@@ -2,9 +2,7 @@
  * DB Store — CALTRC
  *
  * Persists food log entries to a PostgreSQL database.
- * Used in production (e.g. Vercel) when DATABASE_URL is configured.
- *
- * Fallback for local/tests remains the CSV store.
+ * Used when DATABASE_URL is configured.
  */
 
 const { Pool } = require('pg');

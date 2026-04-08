@@ -287,7 +287,7 @@ app.get('/api/food/search', async (req, res) => {
 
 /**
  * POST /api/log
- * Add a food entry to the CSV.
+ * Add a food entry to PostgreSQL.
  * Body: { name, calories, protein, carbs, fat }
  */
 app.post('/api/log', requireAuth, (req, res) => {

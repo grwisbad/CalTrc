@@ -15,6 +15,10 @@ const ACTIVITY_MULTIPLIERS = {
     veryActive: 1.9,
 };
 
+function isDbPool(store) {
+    return Boolean(store && typeof store.query === 'function');
+}
+
 /**
  * Compute daily goals from survey responses.
  * Uses Mifflin-St Jeor equation (simplified).
@@ -55,13 +59,41 @@ function computeGoals(surveyResponse) {
 /**
  * Get progress for a user today.
  * @param {string} userId
- * @param {import('./dataStore')} dataStore
- * @returns {{ goal: Object|null, consumed: Object }}
+ * @param {import('./dataStore') | import('pg').Pool} store
+ * @returns {{ goal: Object|null, consumed: Object } | Promise<{ goal: Object|null, consumed: Object }>}
  */
-function getProgress(userId, dataStore) {
+function getProgress(userId, store) {
     const today = new Date().toISOString().split('T')[0];
-    const goal = dataStore.getGoal(userId, today);
-    const entries = dataStore.getFoodEntriesByUser(userId, today);
+    if (isDbPool(store)) {
+        return Promise.all([
+            store.query(
+                'SELECT target_calories as "calorieTarget", target_protein as "proteinTarget", target_carbs as "carbTarget", target_fat as "fatTarget" FROM goals WHERE user_id = $1 AND date = $2',
+                [userId, today]
+            ),
+            store.query(
+                'SELECT calories, protein, carbs, fat FROM food_entries WHERE user_id = $1 AND date = $2',
+                [userId, today]
+            ),
+        ]).then(([goalRes, entriesRes]) => {
+            const goal = goalRes.rows.length > 0 ? goalRes.rows[0] : null;
+            const entries = entriesRes.rows;
+
+            const consumed = entries.reduce(
+                (totals, e) => ({
+                    calories: totals.calories + (Number(e.calories) || 0),
+                    protein: totals.protein + (Number(e.protein) || 0),
+                    carbs: totals.carbs + (Number(e.carbs) || 0),
+                    fat: totals.fat + (Number(e.fat) || 0),
+                }),
+                { calories: 0, protein: 0, carbs: 0, fat: 0 }
+            );
+
+            return { goal, consumed };
+        });
+    }
+
+    const goal = store.getGoal(userId, today);
+    const entries = store.getFoodEntriesByUser(userId, today);
 
     const consumed = entries.reduce(
         (totals, e) => ({

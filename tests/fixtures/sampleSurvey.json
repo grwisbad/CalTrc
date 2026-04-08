@@ -1,17 +1,11 @@
 {
-    "userId": "user-001",
-    "answers": [
-        {
-            "questionId": "age",
-            "value": 25
-        },
-        {
-            "questionId": "weight",
-            "value": 70
-        },
-        {
-            "questionId": "activityLevel",
-            "value": "moderate"
-        }
-    ]
+  "userId": "user-001",
+  "answers": [
+    { "questionId": "age", "value": 25 },
+    { "questionId": "heightCm", "value": 175 },
+    { "questionId": "weight", "value": 70 },
+    { "questionId": "biologicalSex", "value": "male" },
+    { "questionId": "activityLevel", "value": "moderate" },
+    { "questionId": "goalPace", "value": "maintain" }
+  ]
 }

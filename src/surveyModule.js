@@ -1,16 +1,24 @@
 /**
  * Survey Module — CALTRC
  *
- * Handles survey presentation, validation, and storage.
+ * Handles survey validation and persistence.
  */
 
-const REQUIRED_QUESTIONS = ['age', 'weight', 'activityLevel'];
+const REQUIRED_QUESTIONS = [
+    'age',
+    'heightCm',
+    'weight',
+    'biologicalSex',
+    'activityLevel',
+    'goalPace',
+];
 
-/**
- * Validate survey answers.
- * @param {Object[]} answers - Array of { questionId, value }
- * @returns {{ valid: boolean, errors: string[] }}
- */
+const ALLOWED_VALUES = {
+    biologicalSex: ['male', 'female'],
+    activityLevel: ['sedentary', 'light', 'moderate', 'active', 'veryActive'],
+    goalPace: ['lose', 'maintain', 'gain'],
+};
+
 function validateSurvey(answers) {
     const errors = [];
 
@@ -18,10 +26,10 @@ function validateSurvey(answers) {
         return { valid: false, errors: ['Survey answers are required.'] };
     }
 
-    const answeredIds = answers.map((a) => a.questionId);
+    const byId = new Map(answers.map((a) => [a.questionId, a.value]));
 
     for (const q of REQUIRED_QUESTIONS) {
-        if (!answeredIds.includes(q)) {
+        if (!byId.has(q)) {
             errors.push(`Missing required question: ${q}`);
         }
     }
@@ -32,16 +40,31 @@ function validateSurvey(answers) {
         }
     }
 
+    const age = Number(byId.get('age'));
+    if (isNaN(age) || age < 13 || age > 100) {
+        errors.push('Age must be between 13 and 100.');
+    }
+
+    const heightCm = Number(byId.get('heightCm'));
+    if (isNaN(heightCm) || heightCm < 120 || heightCm > 230) {
+        errors.push('Height must be between 120 and 230 cm.');
+    }
+
+    const weight = Number(byId.get('weight'));
+    if (isNaN(weight) || weight < 30 || weight > 350) {
+        errors.push('Weight must be between 30 and 350 kg.');
+    }
+
+    for (const key of Object.keys(ALLOWED_VALUES)) {
+        const value = byId.get(key);
+        if (value !== undefined && value !== null && value !== '' && !ALLOWED_VALUES[key].includes(value)) {
+            errors.push(`Invalid value for ${key}.`);
+        }
+    }
+
     return { valid: errors.length === 0, errors };
 }
 
-/**
- * Submit a survey.
- * @param {string} userId
- * @param {Object[]} answers
- * @param {import('pg').Pool} pool
- * @returns {Promise<{ success: boolean, data?: Object, errors?: string[] }>}
- */
 async function submitSurvey(userId, answers, pool) {
     const validation = validateSurvey(answers);
     if (!validation.valid) {
@@ -62,19 +85,13 @@ async function submitSurvey(userId, answers, pool) {
     return { success: true, data: surveyResponse };
 }
 
-/**
- * Get a user's survey.
- * @param {string} userId
- * @param {import('pg').Pool} pool
- * @returns {Promise<Object|null>}
- */
 async function getSurvey(userId, pool) {
     const result = await pool.query('SELECT answers, completed_at FROM surveys WHERE user_id = $1', [userId]);
     if (result.rows.length === 0) return null;
     return {
         userId,
         answers: result.rows[0].answers,
-        completedAt: result.rows[0].completed_at
+        completedAt: result.rows[0].completed_at,
     };
 }
 

@@ -4,9 +4,6 @@
  * Computes daily calorie/macro targets from survey data and tracks progress.
  */
 
-/**
- * Activity level multipliers for calorie calculation.
- */
 const ACTIVITY_MULTIPLIERS = {
     sedentary: 1.2,
     light: 1.375,
@@ -15,51 +12,45 @@ const ACTIVITY_MULTIPLIERS = {
     veryActive: 1.9,
 };
 
-/**
- * Compute daily goals from survey responses.
- * Uses Mifflin-St Jeor equation (simplified).
- *
- * @param {Object} surveyResponse - { answers: [{ questionId, value }] }
- * @returns {Object} { calorieTarget, proteinTarget, carbTarget, fatTarget }
- */
+const GOAL_ADJUSTMENT = {
+    lose: -350,
+    maintain: 0,
+    gain: 250,
+};
+
 function computeGoals(surveyResponse) {
     const answers = surveyResponse.answers || [];
     const get = (id) => {
-        const a = answers.find((a) => a.questionId === id);
+        const a = answers.find((ans) => ans.questionId === id);
         return a ? a.value : null;
     };
 
     const age = Number(get('age')) || 25;
-    const weight = Number(get('weight')) || 70; // kg
+    const weight = Number(get('weight')) || 70;
+    const heightCm = Number(get('heightCm')) || 170;
+    const biologicalSex = get('biologicalSex') || 'male';
     const activityLevel = get('activityLevel') || 'moderate';
+    const goalPace = get('goalPace') || 'maintain';
 
-    // Simplified Mifflin-St Jeor (gender-neutral average)
-    const bmr = 10 * weight + 6.25 * 170 - 5 * age + 5; // assume 170cm height
+    const sexOffset = biologicalSex === 'female' ? -161 : 5;
+    const bmr = 10 * weight + 6.25 * heightCm - 5 * age + sexOffset;
     const multiplier = ACTIVITY_MULTIPLIERS[activityLevel] || 1.55;
-    const calorieTarget = Math.round(bmr * multiplier);
+    const maintenanceCalories = bmr * multiplier;
+    const calorieTarget = Math.max(1200, Math.round(maintenanceCalories + (GOAL_ADJUSTMENT[goalPace] || 0)));
 
-    // Macro split: 30% protein, 40% carbs, 30% fat
-    const proteinTarget = Math.round((calorieTarget * 0.3) / 4); // 4 cal/g protein
-    const carbTarget = Math.round((calorieTarget * 0.4) / 4);     // 4 cal/g carbs
-    const fatTarget = Math.round((calorieTarget * 0.3) / 9);      // 9 cal/g fat
+    const proteinTarget = Math.round((calorieTarget * 0.3) / 4);
+    const carbTarget = Math.round((calorieTarget * 0.4) / 4);
+    const fatTarget = Math.round((calorieTarget * 0.3) / 9);
 
     return { calorieTarget, proteinTarget, carbTarget, fatTarget };
 }
 
-/**
- * Get progress for a user today.
- * @param {string} userId
- * @param {import('pg').Pool} pool
- * @returns {Promise<{ goal: Object|null, consumed: Object }>}
- */
 async function getProgress(userId, pool) {
     const today = new Date().toISOString().split('T')[0];
-    
-    // Fetch Goal
+
     const goalRes = await pool.query('SELECT target_calories as "calorieTarget", target_protein as "proteinTarget", target_carbs as "carbTarget", target_fat as "fatTarget" FROM goals WHERE user_id = $1 AND date = $2', [userId, today]);
     const goal = goalRes.rows.length > 0 ? goalRes.rows[0] : null;
-    
-    // Fetch consumed entries
+
     const entriesRes = await pool.query('SELECT calories, protein, carbs, fat FROM food_entries WHERE user_id = $1 AND date = $2', [userId, today]);
     const entries = entriesRes.rows;
 

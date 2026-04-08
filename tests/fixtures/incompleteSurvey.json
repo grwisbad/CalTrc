@@ -1,9 +1,7 @@
 {
-    "userId": "user-001",
-    "answers": [
-        {
-            "questionId": "age",
-            "value": 25
-        }
-    ]
+  "userId": "user-001",
+  "answers": [
+    { "questionId": "age", "value": 25 },
+    { "questionId": "weight", "value": 70 }
+  ]
 }

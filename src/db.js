@@ -1,11 +1,12 @@
 require('dotenv').config();
 const { Pool } = require('pg');
+const logger = require('./logger');
 
 const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
-    console.warn(
-        '[db] DATABASE_URL is not set. Database features will be disabled until it is configured.'
+    logger.warn(
+        'DATABASE_URL is not set. Database features will be disabled until it is configured.'
     );
 }
 

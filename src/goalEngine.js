@@ -4,6 +4,9 @@
  * Computes daily calorie/macro targets from survey data and tracks progress.
  */
 
+/**
+ * Activity level multipliers for calorie calculation.
+ */
 const ACTIVITY_MULTIPLIERS = {
     sedentary: 1.2,
     light: 1.375,
@@ -12,54 +15,60 @@ const ACTIVITY_MULTIPLIERS = {
     veryActive: 1.9,
 };
 
-const GOAL_ADJUSTMENT = {
-    lose: -350,
-    maintain: 0,
-    gain: 250,
-};
-
+/**
+ * Compute daily goals from survey responses.
+ * Uses Mifflin-St Jeor equation (simplified).
+ *
+ * @param {Object} surveyResponse - { answers: [{ questionId, value }] }
+ * @returns {Object} { calorieTarget, proteinTarget, carbTarget, fatTarget }
+ */
 function computeGoals(surveyResponse) {
     const answers = surveyResponse.answers || [];
     const get = (id) => {
-        const a = answers.find((ans) => ans.questionId === id);
+        const a = answers.find((a) => a.questionId === id);
         return a ? a.value : null;
     };
 
     const age = Number(get('age')) || 25;
-    const weight = Number(get('weight')) || 70;
-    const heightCm = Number(get('heightCm')) || 170;
-    const biologicalSex = get('biologicalSex') || 'male';
+    const heightFeet = Number(get('heightFeet')) || 5;
+    const heightInches = Number(get('heightInches')) || 7;
+    const weightLbs = Number(get('weightLbs')) || 154; // pounds
     const activityLevel = get('activityLevel') || 'moderate';
-    const goalPace = get('goalPace') || 'maintain';
 
-    const sexOffset = biologicalSex === 'female' ? -161 : 5;
-    const bmr = 10 * weight + 6.25 * heightCm - 5 * age + sexOffset;
+    // Convert imperial survey inputs to metric for Mifflin-St Jeor.
+    const heightCm = ((heightFeet * 12) + heightInches) * 2.54;
+    const weightKg = weightLbs * 0.453592;
+
+    // Simplified Mifflin-St Jeor (gender-neutral average)
+    const bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
     const multiplier = ACTIVITY_MULTIPLIERS[activityLevel] || 1.55;
-    const maintenanceCalories = bmr * multiplier;
-    const calorieTarget = Math.max(1200, Math.round(maintenanceCalories + (GOAL_ADJUSTMENT[goalPace] || 0)));
+    const calorieTarget = Math.round(bmr * multiplier);
 
-    const proteinTarget = Math.round((calorieTarget * 0.3) / 4);
-    const carbTarget = Math.round((calorieTarget * 0.4) / 4);
-    const fatTarget = Math.round((calorieTarget * 0.3) / 9);
+    // Macro split: 30% protein, 40% carbs, 30% fat
+    const proteinTarget = Math.round((calorieTarget * 0.3) / 4); // 4 cal/g protein
+    const carbTarget = Math.round((calorieTarget * 0.4) / 4);     // 4 cal/g carbs
+    const fatTarget = Math.round((calorieTarget * 0.3) / 9);      // 9 cal/g fat
 
     return { calorieTarget, proteinTarget, carbTarget, fatTarget };
 }
 
-async function getProgress(userId, pool) {
+/**
+ * Get progress for a user today.
+ * @param {string} userId
+ * @param {import('./dataStore')} dataStore
+ * @returns {{ goal: Object|null, consumed: Object }}
+ */
+function getProgress(userId, dataStore) {
     const today = new Date().toISOString().split('T')[0];
-
-    const goalRes = await pool.query('SELECT target_calories as "calorieTarget", target_protein as "proteinTarget", target_carbs as "carbTarget", target_fat as "fatTarget" FROM goals WHERE user_id = $1 AND date = $2', [userId, today]);
-    const goal = goalRes.rows.length > 0 ? goalRes.rows[0] : null;
-
-    const entriesRes = await pool.query('SELECT calories, protein, carbs, fat FROM food_entries WHERE user_id = $1 AND date = $2', [userId, today]);
-    const entries = entriesRes.rows;
+    const goal = dataStore.getGoal(userId, today);
+    const entries = dataStore.getFoodEntriesByUser(userId, today);
 
     const consumed = entries.reduce(
         (totals, e) => ({
-            calories: totals.calories + (Number(e.calories) || 0),
-            protein: totals.protein + (Number(e.protein) || 0),
-            carbs: totals.carbs + (Number(e.carbs) || 0),
-            fat: totals.fat + (Number(e.fat) || 0),
+            calories: totals.calories + e.calories,
+            protein: totals.protein + e.protein,
+            carbs: totals.carbs + e.carbs,
+            fat: totals.fat + e.fat,
         }),
         { calories: 0, protein: 0, carbs: 0, fat: 0 }
     );

@@ -11,7 +11,6 @@ const { searchFood, generateId } = require('./foodLogger');
 const { pool, initSchema } = require('./db');
 const { submitSurvey, getSurvey } = require('./surveyModule');
 const { computeGoals, getProgress } = require('./goalEngine');
-const logger = require('./logger');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -67,7 +66,7 @@ async function requireAuth(req, res, next) {
         req.user = { id: result.rows[0].user_id };
         next();
     } catch (err) {
-        logger.error('Auth error', err);
+        console.error('Auth error:', err);
         res.status(500).json({ error: 'Authentication failed' });
     }
 }
@@ -131,7 +130,7 @@ app.post('/api/auth/signup', (req, res) => {
                 });
         })
         .catch((err) => {
-            logger.error('Signup error', err);
+            console.error('Signup error:', err);
             res.status(500).json({ error: 'Failed to create account' });
         });
 });
@@ -185,32 +184,9 @@ app.post('/api/auth/login', (req, res) => {
                 });
         })
         .catch((err) => {
-            logger.error('Login error', err);
+            console.error('Login error:', err);
             res.status(500).json({ error: 'Failed to log in' });
         });
-});
-
-/**
- * POST /api/auth/logout
- * Revokes the session token.
- */
-app.post('/api/auth/logout', async (req, res) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(200).json({ success: true }); // already effectively logged out
-    }
-    const token = authHeader.split(' ')[1];
-    
-    if (pool) {
-        try {
-            await pool.query('DELETE FROM sessions WHERE token = $1', [token]);
-            logger.info('Session revoked', { tokenSuffix: token.slice(-4) });
-        } catch (err) {
-            logger.error('Logout error', err);
-        }
-    }
-    
-    res.status(200).json({ success: true });
 });
 
 /**
@@ -238,7 +214,7 @@ app.post('/api/survey', requireAuth, async (req, res) => {
             goals,
         });
     } catch (err) {
-        logger.error('Survey save error', err);
+        console.error('Survey save error:', err);
         res.status(500).json({ error: 'Failed to save survey' });
     }
 });
@@ -259,7 +235,7 @@ app.get('/api/survey', requireAuth, async (req, res) => {
         }
         res.json({ survey });
     } catch (err) {
-        logger.error('Survey load error', err);
+        console.error('Survey load error:', err);
         res.status(500).json({ error: 'Failed to load survey' });
     }
 });
@@ -285,7 +261,7 @@ app.get('/api/goals/today', requireAuth, async (req, res) => {
 
         res.json(progress);
     } catch (err) {
-        logger.error('Goal load error', err);
+        console.error('Goal load error:', err);
         res.status(500).json({ error: 'Failed to load goals' });
     }
 });
@@ -304,7 +280,7 @@ app.get('/api/food/search', async (req, res) => {
         const results = await searchFood(query.trim());
         res.json({ results });
     } catch (err) {
-        logger.error('Search error', err.message);
+        console.error('Search error:', err.message);
         res.status(500).json({ error: 'Search failed' });
     }
 });
@@ -353,7 +329,7 @@ app.post('/api/log', requireAuth, (req, res) => {
             res.status(201).json({ entry: result.rows[0] });
         })
         .catch((err) => {
-            logger.error('Log error', err);
+            console.error('Log error:', err);
             res.status(500).json({ error: 'Failed to save entry' });
         });
 });
@@ -389,7 +365,7 @@ app.get('/api/log', requireAuth, (req, res) => {
             res.json({ date, entries, totals });
         })
         .catch((err) => {
-            logger.error('Load error', err);
+            console.error('Load error:', err);
             res.status(500).json({ error: 'Failed to load entries' });
         });
 });
@@ -400,12 +376,12 @@ initSchema()
         // Start server
         if (require.main === module) {
             app.listen(PORT, () => {
-                logger.info(`CALTRC running at http://localhost:${PORT}`);
+                console.log(`CALTRC running at http://localhost:${PORT}`);
             });
         }
     })
     .catch((err) => {
-        logger.error('Failed to initialize database schema', err);
+        console.error('Failed to initialize database schema:', err);
         process.exit(1);
     });
 

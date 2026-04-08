@@ -321,11 +321,10 @@
 
             const answers = [
                 { questionId: 'age', value: Number(document.getElementById('survey-age').value) || '' },
-                { questionId: 'heightCm', value: Number(document.getElementById('survey-height').value) || '' },
-                { questionId: 'weight', value: Number(document.getElementById('survey-weight').value) || '' },
-                { questionId: 'biologicalSex', value: document.getElementById('survey-sex').value || '' },
+                { questionId: 'heightFeet', value: Number(document.getElementById('survey-height-feet').value) || '' },
+                { questionId: 'heightInches', value: Number(document.getElementById('survey-height-inches').value) || '' },
+                { questionId: 'weightLbs', value: Number(document.getElementById('survey-weight-lbs').value) || '' },
                 { questionId: 'activityLevel', value: document.getElementById('survey-activity').value || '' },
-                { questionId: 'goalPace', value: document.getElementById('survey-goal-pace').value || '' },
             ];
 
             try {
@@ -384,11 +383,10 @@
             const byId = Object.fromEntries(answers.map((a) => [a.questionId, a.value]));
 
             document.getElementById('survey-age').value = byId.age || '';
-            document.getElementById('survey-height').value = byId.heightCm || '';
-            document.getElementById('survey-weight').value = byId.weight || '';
-            document.getElementById('survey-sex').value = byId.biologicalSex || 'male';
+            document.getElementById('survey-height-feet').value = byId.heightFeet || '';
+            document.getElementById('survey-height-inches').value = byId.heightInches || '';
+            document.getElementById('survey-weight-lbs').value = byId.weightLbs || '';
             document.getElementById('survey-activity').value = byId.activityLevel || 'moderate';
-            document.getElementById('survey-goal-pace').value = byId.goalPace || 'maintain';
 
             hideSurveyModal();
         } catch {

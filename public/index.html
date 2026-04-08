@@ -119,21 +119,18 @@
             <input type="number" id="survey-age" min="13" max="100" required>
           </div>
           <div class="form-group">
-            <label for="survey-height">Height (cm)</label>
-            <input type="number" id="survey-height" min="120" max="230" required>
+            <label for="survey-height-feet">Height (ft)</label>
+            <input type="number" id="survey-height-feet" min="3" max="8" required>
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label for="survey-weight">Weight (kg)</label>
-            <input type="number" id="survey-weight" min="30" max="350" step="0.1" required>
+            <label for="survey-height-inches">Height (in)</label>
+            <input type="number" id="survey-height-inches" min="0" max="11" required>
           </div>
           <div class="form-group">
-            <label for="survey-sex">Biological sex</label>
-            <select id="survey-sex" required>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-            </select>
+            <label for="survey-weight-lbs">Weight (lbs)</label>
+            <input type="number" id="survey-weight-lbs" min="66" max="770" step="0.1" required>
           </div>
         </div>
         <div class="form-row">
@@ -145,14 +142,6 @@
               <option value="moderate" selected>Moderate (3-5 days/week)</option>
               <option value="active">Active (6-7 days/week)</option>
               <option value="veryActive">Very active (physical job + training)</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="survey-goal-pace">Primary goal</label>
-            <select id="survey-goal-pace" required>
-              <option value="lose">Lose fat</option>
-              <option value="maintain" selected>Maintain weight</option>
-              <option value="gain">Build muscle</option>
             </select>
           </div>
         </div>

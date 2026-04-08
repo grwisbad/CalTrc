@@ -131,11 +131,10 @@ describe('Survey and Goal API', () => {
         const res = await post('/api/survey', {
             answers: [
                 { questionId: 'age', value: 30 },
-                { questionId: 'heightCm', value: 180 },
-                { questionId: 'weight', value: 80 },
-                { questionId: 'biologicalSex', value: 'male' },
+                { questionId: 'heightFeet', value: 5 },
+                { questionId: 'heightInches', value: 11 },
+                { questionId: 'weightLbs', value: 176 },
                 { questionId: 'activityLevel', value: 'moderate' },
-                { questionId: 'goalPace', value: 'maintain' },
             ],
         }, token);
 
@@ -156,7 +155,7 @@ describe('Survey and Goal API', () => {
     test('returns saved survey for user', async () => {
         const res = await get('/api/survey', token);
         expect(res.status).toBe(200);
-        expect(res.data.survey.answers.length).toBe(6);
+        expect(res.data.survey.answers.length).toBe(5);
     });
 
     test('returns today goal + consumed progress', async () => {

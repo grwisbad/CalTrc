@@ -58,8 +58,7 @@ graph TD;
     Client[Browser Frontend HTML/CSS/JS] -->|REST API| Express[Express.js Server]
     Express -->|External HTTP| USDA[USDA FoodData Central API]
     Express -->|SQL Queries| DB[(PostgreSQL Database)]
-    Express -->|Fallback| InMemory[In-Memory DataStore]
-    Express -->|Disk I/O| CSV[Local CSV File]
+    Express -->|In-memory modules| InMemory[In-Memory DataStore]
 ```
 
 ## Roadmap (Next 6 Months)
@@ -123,7 +122,7 @@ This section describes the single end-to-end workflow demonstrated for M3.
 
 4. **Search for a food** — type a food name (e.g., "chicken") in the search bar. The app queries the USDA FoodData Central API and returns real nutritional data.
 
-5. **Log the food** — click a search result to add it to your daily log. The entry is saved to `data/food_log.csv`.
+5. **Log the food** — click a search result to add it to your daily log. The entry is saved in PostgreSQL.
 
 6. **View daily totals** — the dashboard shows your logged entries and macro totals (calories, protein, carbs, fat) for the current day.
 
@@ -139,7 +138,7 @@ This section describes the single end-to-end workflow demonstrated for M3.
 | Component | Status | Detail |
 |-----------|--------|--------|
 | USDA FoodData Central API | **Real** | Live HTTP calls to the USDA API for food search |
-| Food logging & CSV storage | **Real** | Entries are persisted to `data/food_log.csv` |
+| Food logging storage | **Real** | Entries are persisted in PostgreSQL |
 | Express server & API routes | **Real** | Fully functional REST API |
 | Frontend (HTML/CSS/JS) | **Real** | Served by Express from `public/` |
 | User authentication | **Stubbed** | In-memory only; no database, passwords stored in plain text |
@@ -163,8 +162,8 @@ This section describes the single end-to-end workflow demonstrated for M3.
 /src                     # Application source code
   server.js              # Express server & API routes
   index.js               # Legacy entry point
-  dataStore.js           # In-memory data persistence
-  csvStore.js            # CSV-based food log persistence
+  dataStore.js           # In-memory module storage helpers
+  dbStore.js             # PostgreSQL food log persistence module
   surveyModule.js        # Health survey logic
   foodLogger.js          # Food entry & USDA API lookup
   goalEngine.js          # Calorie/macro goal computation
@@ -174,14 +173,11 @@ This section describes the single end-to-end workflow demonstrated for M3.
   app.js                 # Frontend application logic
   auth.js                # Frontend auth logic
   styles.css             # Stylesheet
-/data                    # Persistent data files
-  food_log.csv           # Logged food entries
 /tests                   # Test files
   fixtures/              # Test data (JSON fixtures)
   surveyModule.test.js   # Survey module unit tests
   foodLogger.test.js     # Food logger unit tests
   goalEngine.test.js     # Goal engine unit tests
-  csvStore.test.js       # CSV store unit tests
   auth.test.js           # Auth API unit tests
   index.test.js          # Integration tests
 README.md                # Project documentation

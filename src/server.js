@@ -9,6 +9,9 @@ const path = require('path');
 const crypto = require('crypto');
 const { searchFood, generateId } = require('./foodLogger');
 const { pool, initSchema } = require('./db');
+const { submitSurvey, getSurvey } = require('./surveyModule');
+const { computeGoals, getProgress } = require('./goalEngine');
+const logger = require('./logger');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -16,6 +19,35 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
+
+function getTodayDate() {
+    return new Date().toISOString().split('T')[0];
+}
+
+async function upsertGoalForToday(userId, goals) {
+    const today = getTodayDate();
+    await pool.query(
+        `
+        INSERT INTO goals (id, user_id, date, target_calories, target_protein, target_carbs, target_fat, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+        ON CONFLICT (user_id, date)
+        DO UPDATE SET
+            target_calories = EXCLUDED.target_calories,
+            target_protein = EXCLUDED.target_protein,
+            target_carbs = EXCLUDED.target_carbs,
+            target_fat = EXCLUDED.target_fat
+    `,
+        [
+            `goal_${userId}_${today}`,
+            userId,
+            today,
+            goals.calorieTarget,
+            goals.proteinTarget,
+            goals.carbTarget,
+            goals.fatTarget,
+        ]
+    );
+}
 
 // --- Auth Middleware ---
 async function requireAuth(req, res, next) {
@@ -35,7 +67,7 @@ async function requireAuth(req, res, next) {
         req.user = { id: result.rows[0].user_id };
         next();
     } catch (err) {
-        console.error('Auth error:', err);
+        logger.error('Auth error', err);
         res.status(500).json({ error: 'Authentication failed' });
     }
 }
@@ -99,7 +131,7 @@ app.post('/api/auth/signup', (req, res) => {
                 });
         })
         .catch((err) => {
-            console.error('Signup error:', err);
+            logger.error('Signup error', err);
             res.status(500).json({ error: 'Failed to create account' });
         });
 });
@@ -153,9 +185,109 @@ app.post('/api/auth/login', (req, res) => {
                 });
         })
         .catch((err) => {
-            console.error('Login error:', err);
+            logger.error('Login error', err);
             res.status(500).json({ error: 'Failed to log in' });
         });
+});
+
+/**
+ * POST /api/auth/logout
+ * Revokes the session token.
+ */
+app.post('/api/auth/logout', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(200).json({ success: true }); // already effectively logged out
+    }
+    const token = authHeader.split(' ')[1];
+    
+    if (pool) {
+        try {
+            await pool.query('DELETE FROM sessions WHERE token = $1', [token]);
+            logger.info('Session revoked', { tokenSuffix: token.slice(-4) });
+        } catch (err) {
+            logger.error('Logout error', err);
+        }
+    }
+    
+    res.status(200).json({ success: true });
+});
+
+/**
+ * POST /api/survey
+ * Body: { answers: [{ questionId, value }] }
+ */
+app.post('/api/survey', requireAuth, async (req, res) => {
+    if (!pool) {
+        return res.status(500).json({ error: 'Database is not configured. Set DATABASE_URL on Vercel.' });
+    }
+
+    const { answers } = req.body;
+
+    try {
+        const surveyResult = await submitSurvey(req.user.id, answers, pool);
+        if (!surveyResult.success) {
+            return res.status(400).json({ errors: surveyResult.errors });
+        }
+
+        const goals = computeGoals(surveyResult.data);
+        await upsertGoalForToday(req.user.id, goals);
+
+        res.status(201).json({
+            survey: surveyResult.data,
+            goals,
+        });
+    } catch (err) {
+        logger.error('Survey save error', err);
+        res.status(500).json({ error: 'Failed to save survey' });
+    }
+});
+
+/**
+ * GET /api/survey
+ * Returns the authenticated user's survey if it exists.
+ */
+app.get('/api/survey', requireAuth, async (req, res) => {
+    if (!pool) {
+        return res.status(500).json({ error: 'Database is not configured. Set DATABASE_URL on Vercel.' });
+    }
+
+    try {
+        const survey = await getSurvey(req.user.id, pool);
+        if (!survey) {
+            return res.status(404).json({ error: 'Survey not found' });
+        }
+        res.json({ survey });
+    } catch (err) {
+        logger.error('Survey load error', err);
+        res.status(500).json({ error: 'Failed to load survey' });
+    }
+});
+
+/**
+ * GET /api/goals/today
+ * Returns today's target goals and consumed totals.
+ */
+app.get('/api/goals/today', requireAuth, async (req, res) => {
+    if (!pool) {
+        return res.status(500).json({ error: 'Database is not configured. Set DATABASE_URL on Vercel.' });
+    }
+
+    try {
+        const survey = await getSurvey(req.user.id, pool);
+        if (!survey) {
+            return res.status(404).json({ error: 'Survey required before goals are available' });
+        }
+
+        const computed = computeGoals(survey);
+        await upsertGoalForToday(req.user.id, computed);
+        const progress = await getProgress(req.user.id, pool);
+
+        res.json(progress);
+    } catch (err) {
+        logger.error('Goal load error', err);
+        res.status(500).json({ error: 'Failed to load goals' });
+    }
 });
 
 /**
@@ -172,7 +304,7 @@ app.get('/api/food/search', async (req, res) => {
         const results = await searchFood(query.trim());
         res.json({ results });
     } catch (err) {
-        console.error('Search error:', err.message);
+        logger.error('Search error', err.message);
         res.status(500).json({ error: 'Search failed' });
     }
 });
@@ -189,7 +321,7 @@ app.post('/api/log', requireAuth, (req, res) => {
         return res.status(400).json({ error: 'Food name is required' });
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayDate();
     const entry = {
         id: generateId(),
         date: today,
@@ -221,7 +353,7 @@ app.post('/api/log', requireAuth, (req, res) => {
             res.status(201).json({ entry: result.rows[0] });
         })
         .catch((err) => {
-            console.error('Log error:', err);
+            logger.error('Log error', err);
             res.status(500).json({ error: 'Failed to save entry' });
         });
 });
@@ -231,7 +363,7 @@ app.post('/api/log', requireAuth, (req, res) => {
  * Get food entries and totals for a date.
  */
 app.get('/api/log', requireAuth, (req, res) => {
-    const date = req.query.date || new Date().toISOString().split('T')[0];
+    const date = req.query.date || getTodayDate();
 
     pool.query(
         `
@@ -257,7 +389,7 @@ app.get('/api/log', requireAuth, (req, res) => {
             res.json({ date, entries, totals });
         })
         .catch((err) => {
-            console.error('Load error:', err);
+            logger.error('Load error', err);
             res.status(500).json({ error: 'Failed to load entries' });
         });
 });
@@ -268,12 +400,12 @@ initSchema()
         // Start server
         if (require.main === module) {
             app.listen(PORT, () => {
-                console.log(`CALTRC running at http://localhost:${PORT}`);
+                logger.info(`CALTRC running at http://localhost:${PORT}`);
             });
         }
     })
     .catch((err) => {
-        console.error('Failed to initialize database schema:', err);
+        logger.error('Failed to initialize database schema', err);
         process.exit(1);
     });
 

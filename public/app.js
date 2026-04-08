@@ -5,7 +5,6 @@
 (function () {
     'use strict';
 
-    // --- DOM refs ---
     const searchInput = document.getElementById('food-search');
     const searchStatus = document.getElementById('search-status');
     const searchResults = document.getElementById('search-results');
@@ -16,30 +15,41 @@
     const logDate = document.getElementById('log-date');
     const logContent = document.getElementById('log-content');
     const toastContainer = document.getElementById('toast-container');
+    const surveyForm = document.getElementById('survey-form');
+    const surveyStatus = document.getElementById('survey-status');
+    const surveyModal = document.getElementById('survey-modal-backdrop');
+    const surveySubmitBtn = document.getElementById('survey-submit');
+    const goalContent = document.getElementById('goal-content');
 
-    // --- State ---
     let searchTimer = null;
 
-    // --- Init ---
     function init() {
-        // Auth gate — redirect if not logged in
         const token = localStorage.getItem('caltrc_token');
         if (!token) {
             window.location.href = '/auth.html';
             return;
         }
 
-        // Personalized greeting
         const greeting = document.getElementById('user-greeting');
         try {
             const user = JSON.parse(localStorage.getItem('caltrc_user'));
-            if (user && user.name) {
-                greeting.textContent = `Welcome back, ${user.name}`;
-            }
-        } catch { /* ignore */ }
+            if (user && user.name) greeting.textContent = `Welcome back, ${user.name}`;
+        } catch {
+            // ignore
+        }
 
-        // Logout
-        document.getElementById('logout-btn').addEventListener('click', () => {
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            const token = localStorage.getItem('caltrc_token');
+            if (token) {
+                try {
+                    await fetch('/api/auth/logout', {
+                        method: 'POST',
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                } catch {
+                    // even if network fails, we clear local state
+                }
+            }
             localStorage.removeItem('caltrc_token');
             localStorage.removeItem('caltrc_user');
             window.location.href = '/auth.html';
@@ -52,10 +62,14 @@
         setupSearch();
         setupManualForm();
         setupDateNav();
+        setupSurveyForm();
+        setupModalGuard();
+
+        loadSurveyAndMaybePrompt();
+        loadGoals();
         loadLog(today);
     }
 
-    // --- Tabs ---
     function setupTabs() {
         const tabs = document.querySelectorAll('.tab');
         tabs.forEach((tab) => {
@@ -74,7 +88,6 @@
         });
     }
 
-    // --- USDA Search ---
     function setupSearch() {
         searchInput.addEventListener('input', () => {
             clearTimeout(searchTimer);
@@ -94,7 +107,6 @@
     async function performSearch(query) {
         searchStatus.textContent = 'Searching';
 
-        // Show skeleton
         searchResults.innerHTML = `
       <div class="search-results" style="padding: var(--sp-3) var(--sp-4);">
         <div class="skeleton skeleton-line"></div>
@@ -106,7 +118,7 @@
         try {
             const token = localStorage.getItem('caltrc_token');
             const res = await fetch(`/api/food/search?q=${encodeURIComponent(query)}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
 
@@ -145,7 +157,6 @@
         html += '</div>';
         searchResults.innerHTML = html;
 
-        // Attach click handlers
         searchResults.querySelectorAll('.search-result').forEach((el) => {
             el.addEventListener('click', () => {
                 const food = JSON.parse(el.dataset.food);
@@ -154,12 +165,10 @@
         });
     }
 
-    // --- Manual Form ---
     function setupManualForm() {
         manualForm.addEventListener('submit', (e) => {
             e.preventDefault();
 
-            // Validate
             const name = nameInput.value.trim();
             if (!name) {
                 nameInput.classList.add('input-error');
@@ -188,7 +197,6 @@
         });
     }
 
-    // --- Add entry ---
     async function addEntry(food) {
         manualSubmit.classList.add('loading');
         manualSubmit.disabled = true;
@@ -197,9 +205,9 @@
             const token = localStorage.getItem('caltrc_token');
             const res = await fetch('/api/log', {
                 method: 'POST',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify(food),
             });
@@ -215,8 +223,8 @@
             searchResults.innerHTML = '';
             searchStatus.textContent = '';
 
-            // Reload today's log
-            loadLog(logDate.value);
+            await loadLog(logDate.value);
+            await loadGoals();
         } catch (err) {
             showToast(err.message, 'error');
         } finally {
@@ -225,14 +233,12 @@
         }
     }
 
-    // --- Date Nav ---
     function setupDateNav() {
         logDate.addEventListener('change', () => {
             loadLog(logDate.value);
         });
     }
 
-    // --- Load Log ---
     async function loadLog(date) {
         logContent.innerHTML = `
       <div style="padding: var(--sp-4);">
@@ -246,7 +252,7 @@
         try {
             const token = localStorage.getItem('caltrc_token');
             const res = await fetch(`/api/log?date=${date}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
             renderLog(data.entries, data.totals);
@@ -302,7 +308,164 @@
         logContent.innerHTML = html;
     }
 
-    // --- Toast ---
+    function setupSurveyForm() {
+        if (!surveyForm) return;
+        surveyForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            surveyStatus.textContent = '';
+
+            if (surveySubmitBtn) {
+                surveySubmitBtn.classList.add('loading');
+                surveySubmitBtn.disabled = true;
+            }
+
+            const answers = [
+                { questionId: 'age', value: Number(document.getElementById('survey-age').value) || '' },
+                { questionId: 'heightCm', value: Number(document.getElementById('survey-height').value) || '' },
+                { questionId: 'weight', value: Number(document.getElementById('survey-weight').value) || '' },
+                { questionId: 'biologicalSex', value: document.getElementById('survey-sex').value || '' },
+                { questionId: 'activityLevel', value: document.getElementById('survey-activity').value || '' },
+                { questionId: 'goalPace', value: document.getElementById('survey-goal-pace').value || '' },
+            ];
+
+            try {
+                const token = localStorage.getItem('caltrc_token');
+                const res = await fetch('/api/survey', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ answers }),
+                });
+
+                const data = await res.json();
+                if (!res.ok) {
+                    surveyStatus.textContent = data.errors ? data.errors.join(' | ') : (data.error || 'Failed to save survey');
+                    return;
+                }
+
+                hideSurveyModal();
+                await loadGoals();
+                showToast('Profile saved! Your goals are ready.', 'success');
+            } catch {
+                surveyStatus.textContent = 'Network error — please try again';
+            } finally {
+                if (surveySubmitBtn) {
+                    surveySubmitBtn.classList.remove('loading');
+                    surveySubmitBtn.disabled = false;
+                }
+            }
+        });
+    }
+
+    async function loadSurveyAndMaybePrompt() {
+        if (!surveyForm) return;
+        try {
+            const token = localStorage.getItem('caltrc_token');
+            const res = await fetch('/api/survey', {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            // No survey yet — show the modal (covers new users AND existing users who skipped)
+            if (res.status === 404) {
+                showSurveyModal();
+                return;
+            }
+
+            // Any other non-OK response (server error etc.) — show modal so user isn't stuck
+            if (!res.ok) {
+                showSurveyModal();
+                return;
+            }
+
+            const data = await res.json();
+            const answers = data.survey?.answers || [];
+            const byId = Object.fromEntries(answers.map((a) => [a.questionId, a.value]));
+
+            document.getElementById('survey-age').value = byId.age || '';
+            document.getElementById('survey-height').value = byId.heightCm || '';
+            document.getElementById('survey-weight').value = byId.weight || '';
+            document.getElementById('survey-sex').value = byId.biologicalSex || 'male';
+            document.getElementById('survey-activity').value = byId.activityLevel || 'moderate';
+            document.getElementById('survey-goal-pace').value = byId.goalPace || 'maintain';
+
+            hideSurveyModal();
+        } catch {
+            // Network failure — show the modal so user can still complete their profile
+            showSurveyModal();
+        }
+    }
+
+    function showSurveyModal() {
+        if (!surveyModal) return;
+        surveyModal.classList.remove('hidden');
+        surveyModal.setAttribute('aria-hidden', 'false');
+    }
+
+    function hideSurveyModal() {
+        if (!surveyModal) return;
+        surveyModal.classList.add('hidden');
+        surveyModal.setAttribute('aria-hidden', 'true');
+    }
+
+    // Prevent the modal from being dismissed by clicking the backdrop or pressing Escape.
+    // The survey is required — users must complete it to get personalized goals.
+    function setupModalGuard() {
+        if (!surveyModal) return;
+
+        // Block backdrop clicks from closing
+        surveyModal.addEventListener('click', (e) => {
+            if (e.target === surveyModal) {
+                // Shake the modal to hint it must be completed
+                const modal = surveyModal.querySelector('.modal');
+                if (modal) {
+                    modal.classList.add('modal-shake');
+                    setTimeout(() => modal.classList.remove('modal-shake'), 400);
+                }
+            }
+        });
+
+        // Block Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !surveyModal.classList.contains('hidden')) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+            }
+        }, true);
+    }
+
+    async function loadGoals() {
+        if (!goalContent) return;
+        goalContent.innerHTML = '<div class="log-empty">Loading goals...</div>';
+
+        try {
+            const token = localStorage.getItem('caltrc_token');
+            const res = await fetch('/api/goals/today', {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                goalContent.innerHTML = '<div class="log-empty">Complete survey to see goals</div>';
+                return;
+            }
+
+            const goal = data.goal;
+            const consumed = data.consumed;
+            goalContent.innerHTML = `
+              <div class="goal-grid">
+                <div class="goal-card"><strong>Calories</strong><span>${consumed.calories} / ${goal.calorieTarget}</span></div>
+                <div class="goal-card"><strong>Protein</strong><span>${consumed.protein.toFixed(1)}g / ${goal.proteinTarget}g</span></div>
+                <div class="goal-card"><strong>Carbs</strong><span>${consumed.carbs.toFixed(1)}g / ${goal.carbTarget}g</span></div>
+                <div class="goal-card"><strong>Fat</strong><span>${consumed.fat.toFixed(1)}g / ${goal.fatTarget}g</span></div>
+              </div>
+            `;
+        } catch {
+            goalContent.innerHTML = '<div class="log-empty">Failed to load goals</div>';
+        }
+    }
+
     function showToast(message, type) {
         const toast = document.createElement('div');
         toast.className = `toast ${type || ''}`;
@@ -321,7 +484,6 @@
         }, 2500);
     }
 
-    // --- Utils ---
     function esc(str) {
         const d = document.createElement('div');
         d.textContent = str;
@@ -332,6 +494,5 @@
         return str.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
     }
 
-    // --- Boot ---
     document.addEventListener('DOMContentLoaded', init);
 })();

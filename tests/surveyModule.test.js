@@ -18,29 +18,56 @@ describe('Survey Module', () => {
             const result = validateSurvey(incompleteSurvey.answers);
             expect(result.valid).toBe(false);
             expect(result.errors.length).toBeGreaterThan(0);
-            expect(result.errors.some((e) => e.includes('weight'))).toBe(true);
+            expect(result.errors.some((e) => e.includes('heightCm'))).toBe(true);
+            expect(result.errors.some((e) => e.includes('biologicalSex'))).toBe(true);
             expect(result.errors.some((e) => e.includes('activityLevel'))).toBe(true);
+            expect(result.errors.some((e) => e.includes('goalPace'))).toBe(true);
         });
 
-        test('rejects an empty answers array', () => {
-            const result = validateSurvey([]);
+        test('rejects out-of-range values', () => {
+            const result = validateSurvey([
+                { questionId: 'age', value: 8 },
+                { questionId: 'heightCm', value: 250 },
+                { questionId: 'weight', value: 10 },
+                { questionId: 'biologicalSex', value: 'robot' },
+                { questionId: 'activityLevel', value: 'ultra' },
+                { questionId: 'goalPace', value: 'teleport' },
+            ]);
             expect(result.valid).toBe(false);
+            expect(result.errors.some((e) => e.includes('Age must be'))).toBe(true);
+            expect(result.errors.some((e) => e.includes('Height must be'))).toBe(true);
+            expect(result.errors.some((e) => e.includes('Weight must be'))).toBe(true);
         });
 
-        test('rejects null/undefined answers', () => {
-            const result = validateSurvey(null);
-            expect(result.valid).toBe(false);
-        });
-
-        test('rejects answers with empty values', () => {
-            const answers = [
-                { questionId: 'age', value: '' },
+        test('rejects non-numeric values for numeric fields', () => {
+            const result = validateSurvey([
+                { questionId: 'age', value: 'not-a-number' },
+                { questionId: 'heightCm', value: 170 },
                 { questionId: 'weight', value: 70 },
+                { questionId: 'biologicalSex', value: 'male' },
                 { questionId: 'activityLevel', value: 'moderate' },
-            ];
-            const result = validateSurvey(answers);
+                { questionId: 'goalPace', value: 'maintain' },
+            ]);
             expect(result.valid).toBe(false);
-            expect(result.errors.some((e) => e.includes('empty value'))).toBe(true);
+            expect(result.errors.some((e) => e.includes('Age must be'))).toBe(true);
+        });
+
+        test('rejects empty or whitespace values', () => {
+            const result = validateSurvey([
+                { questionId: 'age', value: 25 },
+                { questionId: 'heightCm', value: '' },
+                { questionId: 'weight', value: ' ' },
+                { questionId: 'biologicalSex', value: 'male' },
+                { questionId: 'activityLevel', value: 'moderate' },
+                { questionId: 'goalPace', value: 'maintain' },
+            ]);
+            expect(result.valid).toBe(false);
+            expect(result.errors.length).toBeGreaterThan(0);
+        });
+
+        test('handles null or missing answers array gracefully', () => {
+            expect(validateSurvey(null).valid).toBe(false);
+            expect(validateSurvey([]).valid).toBe(false);
         });
     });
 });

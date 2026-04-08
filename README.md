@@ -1,5 +1,31 @@
 # CALTRC
 
+
+## M4 Status (Beta Release & Quality Hardening)
+
+This branch includes M4 runtime integration work:
+
+- Health survey is wired into runtime API and UI.
+- Daily goals/progress are computed and exposed through runtime API and shown on dashboard.
+- Survey + goal integration tests were added.
+- Known issues and M4 evidence docs are tracked in `docs/known-issues.md` and `docs/m4-evidence.md`.
+
+### Runtime API (current)
+
+- `POST /api/auth/signup`
+- `POST /api/auth/login`
+- `GET /api/food/search?q=...`
+- `POST /api/log`
+- `GET /api/log?date=YYYY-MM-DD`
+- `POST /api/survey`
+- `GET /api/survey`
+- `GET /api/goals/today`
+
+### M4 Documentation
+
+- `docs/known-issues.md`
+- `docs/m4-evidence.md`
+
 ## Project Definition (M0)
 
 - **Project name:** CALTRC
@@ -11,7 +37,7 @@
 2. User completes a short survey to establish a health goal.
 3. The app creates a custom health plan based on the survey.
 4. User scans barcodes of food they eat.
-5. The app pulls food macros and updates the daily goal automatically.
+5. The app pulls food macros and updates daily totals automatically.
 
 ### MVP Scope (max 3 features)
 1. Introductory survey to obtain health goals of the user.
@@ -79,7 +105,7 @@ graph TD;
 
 ---
 
-## M3 Demo Path (Walking Skeleton)
+## M4 Demo Path (Feature-Complete Beta)
 
 This section describes the single end-to-end workflow demonstrated for M3.
 
@@ -106,7 +132,7 @@ This section describes the single end-to-end workflow demonstrated for M3.
 - The search returns real food items with calorie and macro info from the USDA database.
 - After logging, the entry appears in the daily log table.
 - The totals bar updates to reflect the sum of all logged entries for today.
-- Running `npm test` shows all 42 tests passing across 6 test suites.
+- Running `npm test` shows all tests passing in CI and locally.
 
 ### What Is Real vs. Stubbed
 

@@ -34,34 +34,55 @@ const NUTRIENT_IDS = {
  */
 async function searchFood(query, fetchFn = null, apiKey = 'DEMO_KEY') {
     const fetcher = fetchFn || globalThis.fetch;
-    try {
-        const url = `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${apiKey}&query=${encodeURIComponent(query)}&pageSize=8`;
-        const res = await fetcher(url);
-        const data = await res.json();
+    const MAX_RETRIES = 3;
+    let attempt = 0;
 
-        if (!data.foods || !Array.isArray(data.foods)) return [];
+    while (attempt < MAX_RETRIES) {
+        attempt++;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
 
-        return data.foods.map((food) => {
-            const getNutrient = (id) => {
-                const n = food.foodNutrients?.find((fn) => fn.nutrientId === id);
-                return n ? +(n.value || 0).toFixed(1) : 0;
-            };
+        try {
+            const url = `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${apiKey}&query=${encodeURIComponent(query)}&pageSize=8`;
+            const res = await fetcher(url, { signal: controller.signal });
+            
+            if (!res.ok) {
+                throw new Error(`USDA API error: ${res.status}`);
+            }
 
-            return {
-                fdcId: food.fdcId,
-                name: food.description || 'Unknown',
-                brand: food.brandOwner || null,
-                calories: getNutrient(NUTRIENT_IDS.ENERGY),
-                protein: getNutrient(NUTRIENT_IDS.PROTEIN),
-                carbs: getNutrient(NUTRIENT_IDS.CARBS),
-                fat: getNutrient(NUTRIENT_IDS.FAT),
-                servingSize: food.servingSize || null,
-                servingUnit: food.servingSizeUnit || null,
-            };
-        });
-    } catch {
-        return [];
+            const data = await res.json();
+            clearTimeout(timeoutId);
+
+            if (!data.foods || !Array.isArray(data.foods)) return [];
+
+            return data.foods.map((food) => {
+                const getNutrient = (id) => {
+                    const n = food.foodNutrients?.find((fn) => fn.nutrientId === id);
+                    return n ? +(n.value || 0).toFixed(1) : 0;
+                };
+
+                return {
+                    fdcId: food.fdcId,
+                    name: food.description || 'Unknown',
+                    brand: food.brandOwner || null,
+                    calories: getNutrient(NUTRIENT_IDS.ENERGY),
+                    protein: getNutrient(NUTRIENT_IDS.PROTEIN),
+                    carbs: getNutrient(NUTRIENT_IDS.CARBS),
+                    fat: getNutrient(NUTRIENT_IDS.FAT),
+                    servingSize: food.servingSize || null,
+                    servingUnit: food.servingSizeUnit || null,
+                };
+            });
+        } catch (err) {
+            clearTimeout(timeoutId);
+            if (attempt === MAX_RETRIES) {
+                return [];
+            }
+            // Wait 500ms before retrying
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
     }
+    return [];
 }
 
 /**

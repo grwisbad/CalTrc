@@ -8,81 +8,131 @@
     <title>CALTRC — Sign In</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 
 <body class="auth-body">
-    <div class="auth-container">
-        <!-- Branding -->
-        <div class="auth-brand">
-            <div class="auth-logo">
-                <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                    <rect width="40" height="40" rx="10" fill="var(--color-accent)" />
-                    <path d="M12 28V18l8-6 8 6v10H24v-6h-8v6z" fill="#fff" />
-                </svg>
+    <!-- Animated background blobs -->
+    <div class="auth-bg-blobs" aria-hidden="true">
+        <div class="auth-blob auth-blob-1"></div>
+        <div class="auth-blob auth-blob-2"></div>
+        <div class="auth-blob auth-blob-3"></div>
+    </div>
+
+    <div class="auth-split">
+        <!-- Left decorative panel -->
+        <div class="auth-panel" aria-hidden="true">
+            <div class="auth-panel-content">
+                <div class="auth-panel-brand">
+                    <svg class="auth-panel-logo" width="56" height="56" viewBox="0 0 56 56" fill="none">
+                        <rect width="56" height="56" rx="14" fill="rgba(255,255,255,0.2)" />
+                        <rect x="3" y="3" width="50" height="50" rx="12" fill="rgba(255,255,255,0.15)" />
+                        <path d="M16 38V24l12-8 12 8v14H34v-8H22v8z" fill="rgba(255,255,255,0.9)" />
+                    </svg>
+                    <h1 class="auth-panel-title">CALTRC</h1>
+                </div>
+                <p class="auth-panel-tagline">Your daily nutrition<br>companion</p>
+
+                <div class="auth-panel-features">
+                    <div class="auth-feature">
+                        <div class="auth-feature-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+                        </div>
+                        <span>Track calories & macros</span>
+                    </div>
+                    <div class="auth-feature">
+                        <div class="auth-feature-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                        </div>
+                        <span>Personalized daily goals</span>
+                    </div>
+                    <div class="auth-feature">
+                        <div class="auth-feature-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        </div>
+                        <span>USDA food database search</span>
+                    </div>
+                </div>
+
+                <!-- Floating decorative rings -->
+                <div class="auth-panel-rings">
+                    <div class="auth-ring auth-ring-1"></div>
+                    <div class="auth-ring auth-ring-2"></div>
+                    <div class="auth-ring auth-ring-3"></div>
+                </div>
             </div>
-            <h1 class="auth-title">CALTRC</h1>
-            <p class="auth-tagline">Your daily nutrition companion</p>
         </div>
 
-        <!-- Auth Card -->
-        <div class="card auth-card">
-            <!-- Tabs -->
-            <div class="auth-tabs" role="tablist">
-                <button class="auth-tab active" role="tab" id="tab-login" aria-selected="true" data-tab="login">Log
-                    In</button>
-                <button class="auth-tab" role="tab" id="tab-signup" aria-selected="false" data-tab="signup">Sign
-                    Up</button>
+        <!-- Right form panel -->
+        <div class="auth-form-panel">
+            <div class="auth-form-wrapper">
+                <!-- Mobile-only brand -->
+                <div class="auth-mobile-brand">
+                    <svg width="36" height="36" viewBox="0 0 56 56" fill="none">
+                        <rect width="56" height="56" rx="14" fill="var(--color-accent)" />
+                        <path d="M16 38V24l12-8 12 8v14H34v-8H22v8z" fill="#fff" />
+                    </svg>
+                    <h1 class="auth-mobile-title">CALTRC</h1>
+                </div>
+
+                <!-- Auth Card -->
+                <div class="auth-glass-card">
+                    <h2 class="auth-card-heading">Welcome back</h2>
+                    <p class="auth-card-sub">Sign in to continue tracking your nutrition</p>
+
+                    <!-- Tabs -->
+                    <div class="auth-tabs" role="tablist">
+                        <button class="auth-tab active" role="tab" id="tab-login" aria-selected="true" data-tab="login">Log In</button>
+                        <button class="auth-tab" role="tab" id="tab-signup" aria-selected="false" data-tab="signup">Sign Up</button>
+                    </div>
+
+                    <!-- Login Form -->
+                    <form id="login-form" class="auth-form active" aria-labelledby="tab-login">
+                        <div class="form-group">
+                            <label for="login-email">Email</label>
+                            <input type="email" id="login-email" placeholder="you@example.com" required autocomplete="email">
+                        </div>
+                        <div class="form-group">
+                            <label for="login-password">Password</label>
+                            <input type="password" id="login-password" placeholder="Enter your password" required autocomplete="current-password">
+                        </div>
+                        <p class="error-text auth-error" id="login-error" hidden></p>
+                        <button type="submit" class="btn btn-primary btn-full btn-lg" id="login-submit">
+                            <span class="spinner"></span>
+                            <span class="btn-text">Log In</span>
+                        </button>
+                    </form>
+
+                    <!-- Signup Form -->
+                    <form id="signup-form" class="auth-form" aria-labelledby="tab-signup">
+                        <div class="form-group">
+                            <label for="signup-name">Full Name</label>
+                            <input type="text" id="signup-name" placeholder="Jane Doe" required autocomplete="name">
+                        </div>
+                        <div class="form-group">
+                            <label for="signup-email">Email</label>
+                            <input type="email" id="signup-email" placeholder="you@example.com" required autocomplete="email">
+                        </div>
+                        <div class="form-group">
+                            <label for="signup-password">Password</label>
+                            <input type="password" id="signup-password" placeholder="At least 6 characters" required minlength="6" autocomplete="new-password">
+                        </div>
+                        <div class="form-group">
+                            <label for="signup-confirm">Confirm Password</label>
+                            <input type="password" id="signup-confirm" placeholder="Re-enter password" required minlength="6" autocomplete="new-password">
+                        </div>
+                        <p class="error-text auth-error" id="signup-error" hidden></p>
+                        <button type="submit" class="btn btn-primary btn-full btn-lg" id="signup-submit">
+                            <span class="spinner"></span>
+                            <span class="btn-text">Create Account</span>
+                        </button>
+                    </form>
+                </div>
+
+                <p class="auth-footer">Track calories &middot; Hit your macros &middot; Feel great</p>
             </div>
-
-            <!-- Login Form -->
-            <form id="login-form" class="auth-form active" aria-labelledby="tab-login">
-                <div class="form-group">
-                    <label for="login-email">Email</label>
-                    <input type="email" id="login-email" placeholder="you@example.com" required autocomplete="email">
-                </div>
-                <div class="form-group">
-                    <label for="login-password">Password</label>
-                    <input type="password" id="login-password" placeholder="Enter your password" required
-                        autocomplete="current-password">
-                </div>
-                <p class="error-text auth-error" id="login-error" hidden></p>
-                <button type="submit" class="btn btn-primary btn-full btn-lg" id="login-submit">
-                    <span class="spinner"></span>
-                    <span class="btn-text">Log In</span>
-                </button>
-            </form>
-
-            <!-- Signup Form -->
-            <form id="signup-form" class="auth-form" aria-labelledby="tab-signup">
-                <div class="form-group">
-                    <label for="signup-name">Full Name</label>
-                    <input type="text" id="signup-name" placeholder="Jane Doe" required autocomplete="name">
-                </div>
-                <div class="form-group">
-                    <label for="signup-email">Email</label>
-                    <input type="email" id="signup-email" placeholder="you@example.com" required autocomplete="email">
-                </div>
-                <div class="form-group">
-                    <label for="signup-password">Password</label>
-                    <input type="password" id="signup-password" placeholder="At least 6 characters" required
-                        minlength="6" autocomplete="new-password">
-                </div>
-                <div class="form-group">
-                    <label for="signup-confirm">Confirm Password</label>
-                    <input type="password" id="signup-confirm" placeholder="Re-enter password" required minlength="6"
-                        autocomplete="new-password">
-                </div>
-                <p class="error-text auth-error" id="signup-error" hidden></p>
-                <button type="submit" class="btn btn-primary btn-full btn-lg" id="signup-submit">
-                    <span class="spinner"></span>
-                    <span class="btn-text">Create Account</span>
-                </button>
-            </form>
         </div>
-
-        <p class="auth-footer">Track calories &middot; Hit your macros &middot; Feel great</p>
     </div>
 
     <div class="toast-container" id="toast-container"></div>

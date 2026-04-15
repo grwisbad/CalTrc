@@ -507,14 +507,84 @@
 
             const goal = data.goal;
             const consumed = data.consumed;
-            goalContent.innerHTML = `
-              <div class="goal-grid">
-                <div class="goal-card"><strong>Calories</strong><span>${consumed.calories} / ${goal.calorieTarget}</span></div>
-                <div class="goal-card"><strong>Protein</strong><span>${consumed.protein.toFixed(1)}g / ${goal.proteinTarget}g</span></div>
-                <div class="goal-card"><strong>Carbs</strong><span>${consumed.carbs.toFixed(1)}g / ${goal.carbTarget}g</span></div>
-                <div class="goal-card"><strong>Fat</strong><span>${consumed.fat.toFixed(1)}g / ${goal.fatTarget}g</span></div>
+
+            // Ring chart helper
+            const RADIUS = 36;
+            const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+
+            function buildRing(label, current, target, cssClass, unit) {
+                const pct = target > 0 ? Math.min(current / target, 1.5) : 0;
+                const displayPct = Math.round(pct * 100);
+                const offset = CIRCUMFERENCE - (Math.min(pct, 1) * CIRCUMFERENCE);
+                const isOver = current > target;
+                const fillClass = isOver ? `${cssClass} ring-over` : cssClass;
+                const currentDisplay = unit === 'cal' ? Math.round(current) : current.toFixed(1);
+                const targetDisplay = unit === 'cal' ? target : target;
+
+                return `
+                  <div class="goal-ring-card">
+                    <div class="goal-ring-svg">
+                      <svg viewBox="0 0 90 90">
+                        <circle class="goal-ring-track" cx="45" cy="45" r="${RADIUS}" />
+                        <circle class="goal-ring-fill ${fillClass}"
+                          cx="45" cy="45" r="${RADIUS}"
+                          stroke-dasharray="${CIRCUMFERENCE}"
+                          stroke-dashoffset="${CIRCUMFERENCE}"
+                          data-target-offset="${offset}" />
+                      </svg>
+                      <div class="goal-ring-center">
+                        <span class="goal-ring-percent">${displayPct}%</span>
+                        <span class="goal-ring-unit">${unit}</span>
+                      </div>
+                    </div>
+                    <span class="goal-ring-label">${label}</span>
+                    <span class="goal-ring-detail">${currentDisplay} / ${targetDisplay}${unit === 'cal' ? '' : 'g'}</span>
+                  </div>
+                `;
+            }
+
+            // Calorie summary bar
+            const calPct = goal.calorieTarget > 0 ? (consumed.calories / goal.calorieTarget) : 0;
+            const calBarWidth = Math.min(calPct * 100, 100);
+            const calIsOver = consumed.calories > goal.calorieTarget;
+
+            let html = `
+              <div class="goal-summary-bar">
+                <div class="goal-summary-label">
+                  <strong>Calories</strong>
+                  <span>${Math.round(consumed.calories)} / ${goal.calorieTarget} kcal</span>
+                </div>
+                <div class="goal-bar-track">
+                  <div class="goal-bar-fill ${calIsOver ? 'over-target' : ''}" style="width: 0%" data-target-width="${calBarWidth}%"></div>
+                </div>
               </div>
             `;
+
+            // Ring charts
+            html += '<div class="goal-rings-grid">';
+            html += buildRing('Calories', consumed.calories, goal.calorieTarget, 'ring-calories', 'cal');
+            html += buildRing('Protein', consumed.protein, goal.proteinTarget, 'ring-protein', 'g');
+            html += buildRing('Carbs', consumed.carbs, goal.carbTarget, 'ring-carbs', 'g');
+            html += buildRing('Fat', consumed.fat, goal.fatTarget, 'ring-fat', 'g');
+            html += '</div>';
+
+            goalContent.innerHTML = html;
+
+            // Animate in after a frame
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    // Animate bar
+                    const barFill = goalContent.querySelector('.goal-bar-fill');
+                    if (barFill) {
+                        barFill.style.width = barFill.dataset.targetWidth;
+                    }
+                    // Animate rings
+                    goalContent.querySelectorAll('.goal-ring-fill').forEach((ring) => {
+                        ring.style.strokeDashoffset = ring.dataset.targetOffset;
+                    });
+                });
+            });
+
         } catch {
             goalContent.innerHTML = '<div class="log-empty">Failed to load goals</div>';
         }

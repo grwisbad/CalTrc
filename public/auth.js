@@ -20,6 +20,9 @@
     const toastContainer = document.getElementById('toast-container');
 
     // --- Tabs ---
+    const authCardHeading = document.querySelector('.auth-card-heading');
+    const authCardSub = document.querySelector('.auth-card-sub');
+
     document.querySelectorAll('.auth-tab').forEach((tab) => {
         tab.addEventListener('click', () => {
             // Update tabs
@@ -34,6 +37,17 @@
             document.querySelectorAll('.auth-form').forEach((f) => f.classList.remove('active'));
             const target = tab.dataset.tab === 'login' ? loginForm : signupForm;
             target.classList.add('active');
+
+            // Update heading text
+            if (authCardHeading && authCardSub) {
+                if (tab.dataset.tab === 'login') {
+                    authCardHeading.textContent = 'Welcome back';
+                    authCardSub.textContent = 'Sign in to continue tracking your nutrition';
+                } else {
+                    authCardHeading.textContent = 'Get started';
+                    authCardSub.textContent = 'Create an account to start tracking your nutrition';
+                }
+            }
 
             // Clear errors
             loginError.hidden = true;

@@ -494,6 +494,39 @@ input::placeholder {
   background: var(--color-danger);
 }
 
+/* --- Delete Entry Button --- */
+.btn-delete-entry {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease);
+}
+
+.btn-delete-entry:hover {
+  color: var(--color-danger);
+  background: #fef2f2;
+  border-color: var(--color-danger);
+  transform: scale(1.1);
+}
+
+.btn-delete-entry:active {
+  transform: scale(0.95);
+}
+
+/* --- Edit Profile Button --- */
+.btn-edit-profile {
+  font-size: var(--text-xs);
+  padding: var(--sp-1) var(--sp-3);
+}
+
 /* --- Responsive --- */
 @media (max-width: 600px) {
 

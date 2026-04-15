@@ -20,8 +20,12 @@
     const surveyModal = document.getElementById('survey-modal-backdrop');
     const surveySubmitBtn = document.getElementById('survey-submit');
     const goalContent = document.getElementById('goal-content');
+    const editProfileBtn = document.getElementById('edit-profile-btn');
+    const surveyHelp = document.getElementById('survey-help');
+    const surveyModalTitle = document.getElementById('survey-modal-title');
 
     let searchTimer = null;
+    let surveyEditMode = false;  // tracks create vs edit mode for the survey modal
 
     function init() {
         const token = localStorage.getItem('caltrc_token');
@@ -64,6 +68,7 @@
         setupDateNav();
         setupSurveyForm();
         setupModalGuard();
+        setupEditProfile();
 
         loadSurveyAndMaybePrompt();
         loadGoals();
@@ -276,6 +281,7 @@
             <th>Protein</th>
             <th>Carbs</th>
             <th>Fat</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -289,6 +295,14 @@
           <td>${e.protein}g</td>
           <td>${e.carbs}g</td>
           <td>${e.fat}g</td>
+          <td>
+            <button class="btn-delete-entry" data-entry-id="${esc(e.id)}" aria-label="Delete ${esc(e.name)}" title="Delete entry">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </button>
+          </td>
         </tr>
       `;
         }
@@ -300,12 +314,22 @@
           <td>${totals.protein}g</td>
           <td>${totals.carbs}g</td>
           <td>${totals.fat}g</td>
+          <td></td>
         </tr>
         </tbody>
       </table>
     `;
 
         logContent.innerHTML = html;
+
+        // Attach delete handlers
+        logContent.querySelectorAll('.btn-delete-entry').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const entryId = btn.dataset.entryId;
+                const entryName = btn.closest('tr').querySelector('td').textContent;
+                deleteEntry(entryId, entryName);
+            });
+        });
     }
 
     function setupSurveyForm() {
@@ -329,8 +353,9 @@
 
             try {
                 const token = localStorage.getItem('caltrc_token');
+                const method = surveyEditMode ? 'PUT' : 'POST';
                 const res = await fetch('/api/survey', {
-                    method: 'POST',
+                    method,
                     headers: {
                         'Content-Type': 'application/json',
                         Authorization: `Bearer ${token}`,
@@ -345,8 +370,9 @@
                 }
 
                 hideSurveyModal();
+                surveyEditMode = false;
                 await loadGoals();
-                showToast('Profile saved! Your goals are ready.', 'success');
+                showToast(method === 'PUT' ? 'Profile updated!' : 'Profile saved! Your goals are ready.', 'success');
             } catch {
                 surveyStatus.textContent = 'Network error — please try again';
             } finally {
@@ -368,12 +394,14 @@
 
             // No survey yet — show the modal (covers new users AND existing users who skipped)
             if (res.status === 404) {
+                surveyEditMode = false;
                 showSurveyModal();
                 return;
             }
 
             // Any other non-OK response (server error etc.) — show modal so user isn't stuck
             if (!res.ok) {
+                surveyEditMode = false;
                 showSurveyModal();
                 return;
             }
@@ -389,8 +417,12 @@
             document.getElementById('survey-activity').value = byId.activityLevel || 'moderate';
 
             hideSurveyModal();
+
+            // Show the edit profile button since survey exists
+            if (editProfileBtn) editProfileBtn.style.display = '';
         } catch {
             // Network failure — show the modal so user can still complete their profile
+            surveyEditMode = false;
             showSurveyModal();
         }
     }
@@ -407,30 +439,54 @@
         surveyModal.setAttribute('aria-hidden', 'true');
     }
 
-    // Prevent the modal from being dismissed by clicking the backdrop or pressing Escape.
-    // The survey is required — users must complete it to get personalized goals.
+    // Prevent the modal from being dismissed by clicking the backdrop or pressing Escape
+    // when in create mode. In edit mode, allow dismissal.
     function setupModalGuard() {
         if (!surveyModal) return;
 
-        // Block backdrop clicks from closing
+        // Block backdrop clicks from closing in create mode
         surveyModal.addEventListener('click', (e) => {
             if (e.target === surveyModal) {
-                // Shake the modal to hint it must be completed
-                const modal = surveyModal.querySelector('.modal');
-                if (modal) {
-                    modal.classList.add('modal-shake');
-                    setTimeout(() => modal.classList.remove('modal-shake'), 400);
+                if (surveyEditMode) {
+                    // In edit mode, allow closing
+                    hideSurveyModal();
+                    surveyEditMode = false;
+                } else {
+                    // Shake the modal to hint it must be completed
+                    const modal = surveyModal.querySelector('.modal');
+                    if (modal) {
+                        modal.classList.add('modal-shake');
+                        setTimeout(() => modal.classList.remove('modal-shake'), 400);
+                    }
                 }
             }
         });
 
-        // Block Escape key
+        // Block Escape key in create mode only
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && !surveyModal.classList.contains('hidden')) {
-                e.preventDefault();
-                e.stopImmediatePropagation();
+                if (surveyEditMode) {
+                    hideSurveyModal();
+                    surveyEditMode = false;
+                } else {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                }
             }
         }, true);
+    }
+
+    function setupEditProfile() {
+        if (!editProfileBtn) return;
+        editProfileBtn.addEventListener('click', () => {
+            surveyEditMode = true;
+            if (surveyModalTitle) surveyModalTitle.textContent = 'Edit your health profile';
+            if (surveyHelp) surveyHelp.textContent = 'Update your info below to recalculate your daily targets.';
+            if (surveySubmitBtn) {
+                surveySubmitBtn.querySelector('.btn-text').textContent = 'Save changes';
+            }
+            showSurveyModal();
+        });
     }
 
     async function loadGoals() {
@@ -490,6 +546,29 @@
 
     function escapeAttr(str) {
         return str.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+    }
+
+    async function deleteEntry(entryId, entryName) {
+        if (!confirm(`Delete "${entryName}"?`)) return;
+
+        try {
+            const token = localStorage.getItem('caltrc_token');
+            const res = await fetch(`/api/log/${encodeURIComponent(entryId)}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Failed to delete');
+            }
+
+            showToast('Entry deleted', 'success');
+            await loadLog(logDate.value);
+            await loadGoals();
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
     }
 
     document.addEventListener('DOMContentLoaded', init);

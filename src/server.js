@@ -220,6 +220,43 @@ app.post('/api/survey', requireAuth, async (req, res) => {
 });
 
 /**
+ * PUT /api/survey
+ * Update an existing survey.
+ * Body: { answers: [{ questionId, value }] }
+ */
+app.put('/api/survey', requireAuth, async (req, res) => {
+    if (!pool) {
+        return res.status(500).json({ error: 'Database is not configured. Set DATABASE_URL on Vercel.' });
+    }
+
+    const { answers } = req.body;
+
+    try {
+        // Check if a survey exists first
+        const existing = await getSurvey(req.user.id, pool);
+        if (!existing) {
+            return res.status(404).json({ error: 'No survey to update. Submit one first.' });
+        }
+
+        const surveyResult = await submitSurvey(req.user.id, answers, pool);
+        if (!surveyResult.success) {
+            return res.status(400).json({ errors: surveyResult.errors });
+        }
+
+        const goals = computeGoals(surveyResult.data);
+        await upsertGoalForToday(req.user.id, goals);
+
+        res.status(200).json({
+            survey: surveyResult.data,
+            goals,
+        });
+    } catch (err) {
+        console.error('Survey update error:', err);
+        res.status(500).json({ error: 'Failed to update survey' });
+    }
+});
+
+/**
  * GET /api/survey
  * Returns the authenticated user's survey if it exists.
  */
@@ -367,6 +404,29 @@ app.get('/api/log', requireAuth, (req, res) => {
         .catch((err) => {
             console.error('Load error:', err);
             res.status(500).json({ error: 'Failed to load entries' });
+        });
+});
+
+/**
+ * DELETE /api/log/:id
+ * Remove a food entry by ID for the authenticated user.
+ */
+app.delete('/api/log/:id', requireAuth, (req, res) => {
+    const entryId = req.params.id;
+
+    pool.query(
+        'DELETE FROM food_entries WHERE id = $1 AND user_id = $2 RETURNING id',
+        [entryId, req.user.id]
+    )
+        .then((result) => {
+            if (result.rows.length === 0) {
+                return res.status(404).json({ error: 'Entry not found' });
+            }
+            res.status(200).json({ deleted: true, id: entryId });
+        })
+        .catch((err) => {
+            console.error('Delete error:', err);
+            res.status(500).json({ error: 'Failed to delete entry' });
         });
 });
 

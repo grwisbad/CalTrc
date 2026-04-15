@@ -30,6 +30,9 @@
         <div id="goal-content">
           <div class="log-empty">Loading goals...</div>
         </div>
+        <button class="btn btn-ghost btn-edit-profile" id="edit-profile-btn" style="display:none; margin-top: var(--sp-3);">
+          ✏️ Edit health profile
+        </button>
       </div>
     </section>
 
@@ -111,7 +114,7 @@
   <div class="modal-backdrop hidden" id="survey-modal-backdrop" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="survey-modal-title">
       <h2 id="survey-modal-title" class="section-title">Complete your health profile</h2>
-      <p class="survey-help">This one-time survey helps us calculate your personalized daily calorie and macro targets.</p>
+      <p class="survey-help" id="survey-help">This one-time survey helps us calculate your personalized daily calorie and macro targets.</p>
       <form id="survey-form">
         <div class="form-row">
           <div class="form-group">

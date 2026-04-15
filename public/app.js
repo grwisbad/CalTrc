@@ -214,7 +214,7 @@
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify(food),
+                body: JSON.stringify({ ...food, date: logDate.value }),
             });
 
             if (!res.ok) {
@@ -229,7 +229,7 @@
             searchStatus.textContent = '';
 
             await loadLog(logDate.value);
-            await loadGoals();
+            await loadGoals(logDate.value);
         } catch (err) {
             showToast(err.message, 'error');
         } finally {
@@ -241,6 +241,7 @@
     function setupDateNav() {
         logDate.addEventListener('change', () => {
             loadLog(logDate.value);
+            loadGoals(logDate.value);
         });
     }
 
@@ -371,7 +372,7 @@
 
                 hideSurveyModal();
                 surveyEditMode = false;
-                await loadGoals();
+                await loadGoals(logDate.value);
                 showToast(method === 'PUT' ? 'Profile updated!' : 'Profile saved! Your goals are ready.', 'success');
             } catch {
                 surveyStatus.textContent = 'Network error — please try again';
@@ -489,13 +490,14 @@
         });
     }
 
-    async function loadGoals() {
+    async function loadGoals(date) {
         if (!goalContent) return;
+        const targetDate = date || new Date().toISOString().split('T')[0];
         goalContent.innerHTML = '<div class="log-empty">Loading goals...</div>';
 
         try {
             const token = localStorage.getItem('caltrc_token');
-            const res = await fetch('/api/goals/today', {
+            const res = await fetch(`/api/goals/today?date=${targetDate}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
@@ -635,7 +637,7 @@
 
             showToast('Entry deleted', 'success');
             await loadLog(logDate.value);
-            await loadGoals();
+            await loadGoals(logDate.value);
         } catch (err) {
             showToast(err.message, 'error');
         }

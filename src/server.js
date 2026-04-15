@@ -278,13 +278,15 @@ app.get('/api/survey', requireAuth, async (req, res) => {
 });
 
 /**
- * GET /api/goals/today
- * Returns today's target goals and consumed totals.
+ * GET /api/goals/today?date=YYYY-MM-DD
+ * Returns target goals and consumed totals for a given date (defaults to today).
  */
 app.get('/api/goals/today', requireAuth, async (req, res) => {
     if (!pool) {
         return res.status(500).json({ error: 'Database is not configured. Set DATABASE_URL on Vercel.' });
     }
+
+    const date = req.query.date || getTodayDate();
 
     try {
         const survey = await getSurvey(req.user.id, pool);
@@ -294,7 +296,7 @@ app.get('/api/goals/today', requireAuth, async (req, res) => {
 
         const computed = computeGoals(survey);
         await upsertGoalForToday(req.user.id, computed);
-        const progress = await getProgress(req.user.id, pool);
+        const progress = await getProgress(req.user.id, pool, date);
 
         res.json(progress);
     } catch (err) {
@@ -328,16 +330,16 @@ app.get('/api/food/search', async (req, res) => {
  * Body: { name, calories, protein, carbs, fat }
  */
 app.post('/api/log', requireAuth, (req, res) => {
-    const { name, calories, protein, carbs, fat } = req.body;
+    const { name, calories, protein, carbs, fat, date } = req.body;
 
     if (!name || name.trim().length === 0) {
         return res.status(400).json({ error: 'Food name is required' });
     }
 
-    const today = getTodayDate();
+    const entryDate = date || getTodayDate();
     const entry = {
         id: generateId(),
-        date: today,
+        date: entryDate,
         name: name.trim(),
         calories: Number(calories) || 0,
         protein: +(Number(protein) || 0).toFixed(1),

@@ -57,22 +57,23 @@ function computeGoals(surveyResponse) {
 }
 
 /**
- * Get progress for a user today.
+ * Get progress for a user on a given date.
  * @param {string} userId
  * @param {import('./dataStore') | import('pg').Pool} store
+ * @param {string} [date] - YYYY-MM-DD, defaults to today
  * @returns {{ goal: Object|null, consumed: Object } | Promise<{ goal: Object|null, consumed: Object }>}
  */
-function getProgress(userId, store) {
-    const today = new Date().toISOString().split('T')[0];
+function getProgress(userId, store, date) {
+    const targetDate = date || new Date().toISOString().split('T')[0];
     if (isDbPool(store)) {
         return Promise.all([
             store.query(
                 'SELECT target_calories as "calorieTarget", target_protein as "proteinTarget", target_carbs as "carbTarget", target_fat as "fatTarget" FROM goals WHERE user_id = $1 AND date = $2',
-                [userId, today]
+                [userId, targetDate]
             ),
             store.query(
                 'SELECT calories, protein, carbs, fat FROM food_entries WHERE user_id = $1 AND date = $2',
-                [userId, today]
+                [userId, targetDate]
             ),
         ]).then(([goalRes, entriesRes]) => {
             const goal = goalRes.rows.length > 0 ? goalRes.rows[0] : null;
@@ -92,8 +93,8 @@ function getProgress(userId, store) {
         });
     }
 
-    const goal = store.getGoal(userId, today);
-    const entries = store.getFoodEntriesByUser(userId, today);
+    const goal = store.getGoal(userId, targetDate);
+    const entries = store.getFoodEntriesByUser(userId, targetDate);
 
     const consumed = entries.reduce(
         (totals, e) => ({

@@ -572,20 +572,21 @@
 
             goalContent.innerHTML = html;
 
-            // Animate in after a frame
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    // Animate bar
-                    const barFill = goalContent.querySelector('.goal-bar-fill');
-                    if (barFill) {
-                        barFill.style.width = barFill.dataset.targetWidth;
-                    }
-                    // Animate rings
-                    goalContent.querySelectorAll('.goal-ring-fill').forEach((ring) => {
-                        ring.style.strokeDashoffset = ring.dataset.targetOffset;
-                    });
+            // Use a small delay to guarantee the browser has painted the initial
+            // stroke-dashoffset (CIRCUMFERENCE = fully empty) before we set the
+            // target offset, so the CSS transition fires correctly every time
+            // (including when switching dates and the DOM is rebuilt).
+            setTimeout(() => {
+                // Animate bar
+                const barFill = goalContent.querySelector('.goal-bar-fill');
+                if (barFill) {
+                    barFill.style.width = barFill.dataset.targetWidth;
+                }
+                // Animate rings
+                goalContent.querySelectorAll('.goal-ring-fill').forEach((ring) => {
+                    ring.style.strokeDashoffset = ring.dataset.targetOffset;
                 });
-            });
+            }, 50);
 
         } catch {
             goalContent.innerHTML = '<div class="log-empty">Failed to load goals</div>';

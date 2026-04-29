@@ -535,7 +535,7 @@
                           data-target-offset="${offset}" />
                       </svg>
                       <div class="goal-ring-center">
-                        <span class="goal-ring-percent">${displayPct}%</span>
+                        <span class="goal-ring-percent" data-target-pct="${displayPct}">0%</span>
                         <span class="goal-ring-unit">${unit}</span>
                       </div>
                     </div>
@@ -572,6 +572,24 @@
 
             goalContent.innerHTML = html;
 
+            // Number animation helper
+            function animateValue(obj, start, end, duration) {
+                let startTimestamp = null;
+                const step = (timestamp) => {
+                    if (!startTimestamp) startTimestamp = timestamp;
+                    const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                    // easeOutQuart
+                    const easeProgress = 1 - Math.pow(1 - progress, 4);
+                    obj.textContent = Math.floor(easeProgress * (end - start) + start) + '%';
+                    if (progress < 1) {
+                        window.requestAnimationFrame(step);
+                    } else {
+                        obj.textContent = end + '%';
+                    }
+                };
+                window.requestAnimationFrame(step);
+            }
+
             // Use a small delay to guarantee the browser has painted the initial
             // stroke-dashoffset (CIRCUMFERENCE = fully empty) before we set the
             // target offset, so the CSS transition fires correctly every time
@@ -585,6 +603,11 @@
                 // Animate rings
                 goalContent.querySelectorAll('.goal-ring-fill').forEach((ring) => {
                     ring.style.strokeDashoffset = ring.dataset.targetOffset;
+                });
+                // Animate numbers
+                goalContent.querySelectorAll('.goal-ring-percent').forEach((el) => {
+                    const target = parseInt(el.dataset.targetPct, 10);
+                    animateValue(el, 0, target, 1500);
                 });
             }, 50);
 

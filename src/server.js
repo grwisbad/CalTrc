@@ -23,8 +23,8 @@ function getTodayDate() {
     return new Date().toISOString().split('T')[0];
 }
 
-async function upsertGoalForToday(userId, goals) {
-    const today = getTodayDate();
+async function upsertGoalForDate(userId, goals, targetDate) {
+    const dateToUse = targetDate || getTodayDate();
     await pool.query(
         `
         INSERT INTO goals (id, user_id, date, target_calories, target_protein, target_carbs, target_fat, created_at)
@@ -37,9 +37,9 @@ async function upsertGoalForToday(userId, goals) {
             target_fat = EXCLUDED.target_fat
     `,
         [
-            `goal_${userId}_${today}`,
+            `goal_${userId}_${dateToUse}`,
             userId,
-            today,
+            dateToUse,
             goals.calorieTarget,
             goals.proteinTarget,
             goals.carbTarget,
@@ -207,7 +207,7 @@ app.post('/api/survey', requireAuth, async (req, res) => {
         }
 
         const goals = computeGoals(surveyResult.data);
-        await upsertGoalForToday(req.user.id, goals);
+        await upsertGoalForDate(req.user.id, goals);
 
         res.status(201).json({
             survey: surveyResult.data,
@@ -244,7 +244,7 @@ app.put('/api/survey', requireAuth, async (req, res) => {
         }
 
         const goals = computeGoals(surveyResult.data);
-        await upsertGoalForToday(req.user.id, goals);
+        await upsertGoalForDate(req.user.id, goals);
 
         res.status(200).json({
             survey: surveyResult.data,
@@ -295,7 +295,7 @@ app.get('/api/goals/today', requireAuth, async (req, res) => {
         }
 
         const computed = computeGoals(survey);
-        await upsertGoalForToday(req.user.id, computed);
+        await upsertGoalForDate(req.user.id, computed, date);
         const progress = await getProgress(req.user.id, pool, date);
 
         res.json(progress);

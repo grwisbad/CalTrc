@@ -87,17 +87,23 @@ graph TD;
    npm install
    ```
 
-3. Run the application:
+3. Configure the database environment (Zero-Friction Setup):
+   ```bash
+   cp .env.example .env
+   ```
+   *(This provides access to our test PostgreSQL instance so you can run the app immediately without any configuration).*
+
+4. Run the application:
    ```bash
    npm start
    ```
 
-4. Run tests:
+5. Run tests:
    ```bash
    npm test
    ```
 
-5. Open in your browser:
+6. Open in your browser:
    ```
    http://localhost:3000
    ```
@@ -141,7 +147,7 @@ This section describes the single end-to-end workflow demonstrated for M3.
 | Food logging storage | **Real** | Entries are persisted in PostgreSQL |
 | Express server & API routes | **Real** | Fully functional REST API |
 | Frontend (HTML/CSS/JS) | **Real** | Served by Express from `public/` |
-| User authentication | **Stubbed** | In-memory only; no database, passwords stored in plain text |
+| User authentication | **Real** | Backed by PostgreSQL; passwords are securely hashed and salted |
 | Health survey & goal engine | **Real logic** | Modules are implemented and tested, but not yet wired into the UI |
 
 ---

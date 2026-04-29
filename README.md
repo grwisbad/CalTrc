@@ -1,14 +1,15 @@
 # CALTRC
 
 
-## M4 Status (Beta Release & Quality Hardening)
+## M5 Status (Final Release & General Availability)
 
-This branch includes M4 runtime integration work:
+This release represents our transition to General Availability for the Shark Tank handoff:
 
-- Health survey is wired into runtime API and UI.
-- Daily goals/progress are computed and exposed through runtime API and shown on dashboard.
-- Survey + goal integration tests were added.
-- Known issues and M4 evidence docs are tracked in `docs/known-issues.md` and `docs/m4-evidence.md`.
+- Application is fully backed by PostgreSQL (Zero-Friction setup provided via `.env.example`).
+- Security hardened with `crypto.scryptSync` password hashing and salting.
+- Daily goals dashboard upgraded with dynamic date handling, glassmorphism UI, and smooth animations.
+- Test suite is 100% green with robust integration checks.
+- Addressed all major peer review feedback to ensure a stable MVP.
 
 ### Runtime API (current)
 
@@ -21,10 +22,9 @@ This branch includes M4 runtime integration work:
 - `GET /api/survey`
 - `GET /api/goals/today`
 
-### M4 Documentation
+### M5 Documentation
 
-- `docs/known-issues.md`
-- `docs/m4-evidence.md`
+- `TEAM_RETROSPECTIVE.md` (Includes Peer Review integration details)
 
 ## Project Definition (M0)
 
@@ -110,9 +110,9 @@ graph TD;
 
 ---
 
-## M4 Demo Path (Feature-Complete Beta)
+## M5 Demo Path (Shark Tank Pitch)
 
-This section describes the single end-to-end workflow demonstrated for M3.
+This section describes the single end-to-end workflow demonstrated for the final presentation.
 
 ### Workflow: Search Food → Log Entry → View Daily Totals
 
